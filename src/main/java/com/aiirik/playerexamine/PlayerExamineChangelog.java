@@ -8,10 +8,7 @@ final class PlayerExamineChangelog
 	static final String VERSION = "1.0.0";
 
 	private static final List<String> CHANGES = Arrays.asList(
-		"Added a dedicated player examine overlay",
-		"Added configurable overlay colors",
-		"Added update notices on login",
-		"Kept the overlay movable and closer to the RuneScape equipment layout");
+		"Player Examine plugin has updated. See the plugin config for new settings!");
 
 	private PlayerExamineChangelog()
 	{
