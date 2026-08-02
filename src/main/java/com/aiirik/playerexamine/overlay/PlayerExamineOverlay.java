@@ -33,7 +33,7 @@ import net.runelite.client.util.AsyncBufferedImage;
 public class PlayerExamineOverlay extends Overlay
 {
 	private static final int FRAME_WIDTH = 188;
-	private static final int FRAME_HEIGHT = 248;
+	private static final int BASE_FRAME_HEIGHT = 248;
 	private static final int TITLE_BAR_HEIGHT = 18;
 	private static final int SLOT_SIZE = 34;
 	private static final int SLOT_GAP_X = 12;
@@ -42,6 +42,11 @@ public class PlayerExamineOverlay extends Overlay
 	private static final int GRID_START_Y = 28;
 	private static final int SLOT_INSET_X = 4;
 	private static final int SLOT_INSET_Y = 3;
+	private static final int FOOTER_BOTTOM_MARGIN = 5;
+	private static final int FOOTER_TOP_MARGIN = 4;
+	private static final int FOOTER_LINE_GAP = 1;
+	private static final int FOOTER_SIDE_PADDING = 12;
+	private static final int SLOT_GRID_BOTTOM = GRID_START_Y + (4 * (SLOT_SIZE + SLOT_GAP_Y)) + SLOT_SIZE;
 	private static final Rectangle[] SLOT_BOXES = {
 		new Rectangle(GRID_START_X + SLOT_SIZE + SLOT_GAP_X, GRID_START_Y, SLOT_SIZE, SLOT_SIZE),
 		new Rectangle(GRID_START_X, GRID_START_Y + SLOT_SIZE + SLOT_GAP_Y, SLOT_SIZE, SLOT_SIZE),
@@ -97,13 +102,16 @@ public class PlayerExamineOverlay extends Overlay
 		graphics.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
 		graphics.setFont(FontManager.getRunescapeSmallFont());
 
+		FooterLayout footerLayout = buildFooterLayout(graphics, data);
+		int frameHeight = Math.max(BASE_FRAME_HEIGHT, footerLayout.getFrameHeight());
 		Rectangle closeButton = new Rectangle(FRAME_WIDTH - 20, 2, 16, 14);
 		List<SlotState> slots = buildSlots(data);
 
-		drawFrame(graphics, data, closeButton);
+		drawFrame(graphics, data, closeButton, frameHeight);
 		drawSlots(graphics, slots);
+		drawFooter(graphics, footerLayout);
 
-		renderState = new RenderState(closeButton, slots, new Dimension(FRAME_WIDTH, FRAME_HEIGHT));
+		renderState = new RenderState(closeButton, slots, new Dimension(FRAME_WIDTH, frameHeight));
 		addHoverTooltip();
 		return renderState.getDimension();
 	}
@@ -113,16 +121,16 @@ public class PlayerExamineOverlay extends Overlay
 		return renderState;
 	}
 
-	private void drawFrame(Graphics2D graphics, PlayerExamineData data, Rectangle closeButton)
+	private void drawFrame(Graphics2D graphics, PlayerExamineData data, Rectangle closeButton, int frameHeight)
 	{
 		graphics.setColor(config.overlayBorderColor());
-		graphics.drawRect(0, 0, FRAME_WIDTH - 1, FRAME_HEIGHT - 1);
+		graphics.drawRect(0, 0, FRAME_WIDTH - 1, frameHeight - 1);
 
 		Color backgroundColor = config.overlayBackgroundColor();
 		if (backgroundColor.getAlpha() > 0)
 		{
 			graphics.setColor(backgroundColor);
-			graphics.fillRect(1, 1, FRAME_WIDTH - 2, FRAME_HEIGHT - 2);
+			graphics.fillRect(1, 1, FRAME_WIDTH - 2, frameHeight - 2);
 		}
 
 		graphics.setColor(config.overlayBorderColor());
@@ -255,15 +263,147 @@ public class PlayerExamineOverlay extends Overlay
 	{
 		tooltipManager.add(new Tooltip(getDisplayItemName(entry)));
 
+		List<String> valueLines = new ArrayList<>();
 		if (config.showGeValue())
 		{
-			tooltipManager.add(new Tooltip("GE: " + formatPrice(itemManager.getItemPriceWithSource(entry.getItemId(), false))));
+			valueLines.add("GE: " + formatPrice(itemManager.getItemPriceWithSource(entry.getItemId(), false)));
 		}
 
 		if (config.showHaValue())
 		{
-			tooltipManager.add(new Tooltip("HA: " + formatPrice(client.getItemDefinition(entry.getItemId()).getHaPrice())));
+			valueLines.add("HA: " + formatPrice(client.getItemDefinition(entry.getItemId()).getHaPrice()));
 		}
+
+		if (!valueLines.isEmpty())
+		{
+			tooltipManager.add(new Tooltip(String.join("<br>", valueLines)));
+		}
+	}
+
+	private FooterLayout buildFooterLayout(Graphics2D graphics, PlayerExamineData data)
+	{
+		PlayerExamineConfig.TotalValueMode totalValueMode = config.totalValueMode();
+		if (totalValueMode == null || totalValueMode == PlayerExamineConfig.TotalValueMode.None)
+		{
+			return FooterLayout.empty();
+		}
+
+		FontMetrics metrics = graphics.getFontMetrics();
+		FooterLayout layout = buildTotalValueLayout(data, totalValueMode, metrics);
+		if (layout.isEmpty())
+		{
+			return FooterLayout.empty();
+		}
+
+		return layout;
+	}
+
+	private FooterLayout buildTotalValueLayout(PlayerExamineData data, PlayerExamineConfig.TotalValueMode totalValueMode, FontMetrics metrics)
+	{
+		long geTotal = 0;
+		long haTotal = 0;
+
+		for (EquipmentEntry entry : data.getEquipment())
+		{
+			if (entry == null || !entry.hasItem())
+			{
+				continue;
+			}
+
+			int itemId = entry.getItemId();
+			geTotal += itemManager.getItemPriceWithSource(itemId, false);
+			haTotal += client.getItemDefinition(itemId).getHaPrice();
+		}
+
+		String geText = "GE Total: " + formatPrice(geTotal);
+		String haText = "HA Total: " + formatPrice(haTotal);
+		int footerWidth = FRAME_WIDTH - (FOOTER_SIDE_PADDING * 2);
+		int lineHeight = metrics.getHeight();
+		int footerStartY = SLOT_GRID_BOTTOM + FOOTER_TOP_MARGIN;
+
+		switch (totalValueMode)
+		{
+			case Ge:
+				return FooterLayout.single(new FooterLine(geText, config.totalGeTextColor()), footerStartY, lineHeight, FOOTER_BOTTOM_MARGIN);
+			case HA:
+				return FooterLayout.single(new FooterLine(haText, config.totalHaTextColor()), footerStartY, lineHeight, FOOTER_BOTTOM_MARGIN);
+			case Both:
+				int inlineWidth = metrics.stringWidth(geText)
+					+ metrics.stringWidth("  |  ")
+					+ metrics.stringWidth(haText);
+				if (inlineWidth <= footerWidth)
+				{
+					return FooterLayout.inline(
+						new FooterLine(geText, config.totalGeTextColor()),
+						new FooterLine(haText, config.totalHaTextColor()),
+						footerStartY,
+						lineHeight,
+						FOOTER_BOTTOM_MARGIN);
+				}
+				return FooterLayout.stacked(
+					new FooterLine(geText, config.totalGeTextColor()),
+					new FooterLine(haText, config.totalHaTextColor()),
+					footerStartY,
+					lineHeight,
+					FOOTER_LINE_GAP,
+					FOOTER_BOTTOM_MARGIN);
+			default:
+				return FooterLayout.empty();
+		}
+	}
+
+	private void drawFooter(Graphics2D graphics, FooterLayout footerLayout)
+	{
+		if (footerLayout.isEmpty())
+		{
+			return;
+		}
+
+		FontMetrics metrics = graphics.getFontMetrics();
+		if (footerLayout.isStacked())
+		{
+			int startY = footerLayout.getStartY();
+			int currentY = startY;
+			for (FooterLine line : footerLayout.getLines())
+			{
+				drawCenteredShadowText(graphics, line.getText(), new Rectangle(0, currentY, FRAME_WIDTH, metrics.getHeight()), line.getColor());
+				currentY += metrics.getHeight() + FOOTER_LINE_GAP;
+			}
+			return;
+		}
+
+		if (footerLayout.isInlinePair())
+		{
+			int lineY = footerLayout.getStartY();
+			drawCenteredInlineFooter(
+				graphics,
+				footerLayout.getLines().get(0),
+				footerLayout.getLines().get(1),
+				lineY,
+				metrics);
+			return;
+		}
+
+		FooterLine line = footerLayout.getLines().get(0);
+		int lineY = footerLayout.getStartY();
+		drawCenteredShadowText(graphics, line.getText(), new Rectangle(0, lineY, FRAME_WIDTH, metrics.getHeight()), line.getColor());
+	}
+
+	private void drawCenteredInlineFooter(Graphics2D graphics, FooterLine left, FooterLine right, int y, FontMetrics metrics)
+	{
+		String separator = "  |  ";
+		int leftWidth = metrics.stringWidth(left.getText());
+		int separatorWidth = metrics.stringWidth(separator);
+		int rightWidth = metrics.stringWidth(right.getText());
+		int totalWidth = leftWidth + separatorWidth + rightWidth;
+		int x = (FRAME_WIDTH - totalWidth) / 2;
+		int baseline = y + metrics.getAscent();
+
+		drawShadowText(graphics, left.getText(), x, baseline, left.getColor());
+		x += leftWidth;
+		drawShadowText(graphics, separator, x, baseline, config.combatTextColor());
+		x += separatorWidth;
+		drawShadowText(graphics, right.getText(), x, baseline, right.getColor());
 	}
 
 	private String getDisplayItemName(EquipmentEntry entry)
@@ -285,6 +425,112 @@ public class PlayerExamineOverlay extends Overlay
 	private static String formatPrice(int value)
 	{
 		return String.format("%,d", value);
+	}
+
+	private static String formatPrice(long value)
+	{
+		return String.format("%,d", value);
+	}
+
+	private static final class FooterLayout
+	{
+		private final List<FooterLine> lines;
+		private final boolean inlinePair;
+		private final boolean stacked;
+		private final int startY;
+		private final int frameHeight;
+
+		private FooterLayout(List<FooterLine> lines, boolean inlinePair, boolean stacked, int startY, int frameHeight)
+		{
+			this.lines = lines;
+			this.inlinePair = inlinePair;
+			this.stacked = stacked;
+			this.startY = startY;
+			this.frameHeight = frameHeight;
+		}
+
+		static FooterLayout empty()
+		{
+			return new FooterLayout(new ArrayList<>(), false, false, 0, BASE_FRAME_HEIGHT);
+		}
+
+		static FooterLayout single(FooterLine line, int startY, int lineHeight, int bottomMargin)
+		{
+			List<FooterLine> lines = new ArrayList<>();
+			lines.add(line);
+			int frameHeight = Math.max(BASE_FRAME_HEIGHT, startY + lineHeight + bottomMargin);
+			return new FooterLayout(lines, false, false, startY, frameHeight);
+		}
+
+		static FooterLayout inline(FooterLine left, FooterLine right, int startY, int lineHeight, int bottomMargin)
+		{
+			List<FooterLine> lines = new ArrayList<>();
+			lines.add(left);
+			lines.add(right);
+			int frameHeight = Math.max(BASE_FRAME_HEIGHT, startY + lineHeight + bottomMargin);
+			return new FooterLayout(lines, true, false, startY, frameHeight);
+		}
+
+		static FooterLayout stacked(FooterLine left, FooterLine right, int startY, int lineHeight, int lineGap, int bottomMargin)
+		{
+			List<FooterLine> lines = new ArrayList<>();
+			lines.add(left);
+			lines.add(right);
+			int frameHeight = Math.max(BASE_FRAME_HEIGHT, startY + (lineHeight * 2) + lineGap + bottomMargin);
+			return new FooterLayout(lines, false, true, startY, frameHeight);
+		}
+
+		boolean isEmpty()
+		{
+			return lines.isEmpty();
+		}
+
+		boolean isInlinePair()
+		{
+			return inlinePair;
+		}
+
+		boolean isStacked()
+		{
+			return stacked;
+		}
+
+		List<FooterLine> getLines()
+		{
+			return lines;
+		}
+
+		int getStartY()
+		{
+			return startY;
+		}
+
+		int getFrameHeight()
+		{
+			return frameHeight;
+		}
+	}
+
+	private static final class FooterLine
+	{
+		private final String text;
+		private final Color color;
+
+		private FooterLine(String text, Color color)
+		{
+			this.text = text;
+			this.color = color;
+		}
+
+		String getText()
+		{
+			return text;
+		}
+
+		Color getColor()
+		{
+			return color;
+		}
 	}
 
 	public String buildWikiUrl(EquipmentEntry entry)

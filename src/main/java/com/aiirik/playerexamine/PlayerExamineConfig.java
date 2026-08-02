@@ -14,6 +14,14 @@ public interface PlayerExamineConfig extends Config
 	String OVERLAY_COLORS_SECTION = "overlayColors";
 	String ITEM_INFO_SECTION = "itemInfo";
 
+	enum TotalValueMode
+	{
+		None,
+		Ge,
+		HA,
+		Both
+	}
+
 	@ConfigSection(
 		name = "Overlay",
 		description = "Overlay display settings",
@@ -24,7 +32,7 @@ public interface PlayerExamineConfig extends Config
 	@ConfigSection(
 		name = "Overlay Colors",
 		description = "Overlay color settings",
-		position = 1,
+		position = 2,
 		closedByDefault = true
 	)
 	String overlayColorsSection = OVERLAY_COLORS_SECTION;
@@ -32,7 +40,7 @@ public interface PlayerExamineConfig extends Config
 	@ConfigSection(
 		name = "Item Info",
 		description = "Equipment hover and wiki settings",
-		position = 2,
+		position = 1,
 		closedByDefault = true
 	)
 	String itemInfoSection = ITEM_INFO_SECTION;
@@ -46,6 +54,17 @@ public interface PlayerExamineConfig extends Config
 	default boolean disableUpdateNotifications()
 	{
 		return false;
+	}
+
+	@ConfigItem(
+		keyName = "totalValueMode",
+		name = "Total value",
+		section = OVERLAY_SECTION,
+		description = "Show total equipment value in the overlay footer"
+	)
+	default TotalValueMode totalValueMode()
+	{
+		return TotalValueMode.None;
 	}
 
 	@ConfigItem(
@@ -227,6 +246,28 @@ public interface PlayerExamineConfig extends Config
 	default Color overlayCloseHoverColor()
 	{
 		return new Color(94, 30, 26);
+	}
+
+	@ConfigItem(
+		keyName = "totalGeTextColor",
+		name = "GE total",
+		section = OVERLAY_COLORS_SECTION,
+		description = "GE total value text color"
+	)
+	default Color totalGeTextColor()
+	{
+		return new Color(235, 226, 193);
+	}
+
+	@ConfigItem(
+		keyName = "totalHaTextColor",
+		name = "HA total",
+		section = OVERLAY_COLORS_SECTION,
+		description = "HA total value text color"
+	)
+	default Color totalHaTextColor()
+	{
+		return new Color(200, 186, 140);
 	}
 
 }
