@@ -22,6 +22,20 @@ public interface PlayerExamineConfig extends Config
 		Both
 	}
 
+	enum OverlayMode
+	{
+		Item
+		{
+			@Override
+			public String toString()
+			{
+				return "Default";
+			}
+		},
+		List,
+		Hybrid
+	}
+
 	@ConfigSection(
 		name = "Overlay",
 		description = "Overlay display settings",
@@ -65,6 +79,28 @@ public interface PlayerExamineConfig extends Config
 	default TotalValueMode totalValueMode()
 	{
 		return TotalValueMode.None;
+	}
+
+	@ConfigItem(
+		keyName = "overlayMode",
+		name = "Overlay mode",
+		section = OVERLAY_SECTION,
+		description = "Choose between item icons or a text list"
+	)
+	default OverlayMode overlayMode()
+	{
+		return OverlayMode.Item;
+	}
+
+	@ConfigItem(
+		keyName = "hideNotVisibleSlots",
+		name = "Hide not visible slots",
+		section = OVERLAY_SECTION,
+		description = "Hide slots marked Not visible from examine in list and hybrid modes"
+	)
+	default boolean hideNotVisibleSlots()
+	{
+		return false;
 	}
 
 	@ConfigItem(

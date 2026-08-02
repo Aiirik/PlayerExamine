@@ -47,6 +47,14 @@ public class PlayerExamineOverlay extends Overlay
 	private static final int FOOTER_LINE_GAP = 1;
 	private static final int FOOTER_SIDE_PADDING = 12;
 	private static final int SLOT_GRID_BOTTOM = GRID_START_Y + (4 * (SLOT_SIZE + SLOT_GAP_Y)) + SLOT_SIZE;
+	private static final int LIST_START_Y = 30;
+	private static final int LIST_SIDE_PADDING = 8;
+	private static final int LIST_ICON_SIZE = 16;
+	private static final int LIST_ICON_GAP = 4;
+	private static final int LIST_ROW_PADDING_Y = 2;
+	private static final int HYBRID_ICON_SIZE = 20;
+	private static final int HYBRID_ICON_GAP = 6;
+	private static final int HYBRID_ROW_PADDING_Y = 4;
 	private static final Rectangle[] SLOT_BOXES = {
 		new Rectangle(GRID_START_X + SLOT_SIZE + SLOT_GAP_X, GRID_START_Y, SLOT_SIZE, SLOT_SIZE),
 		new Rectangle(GRID_START_X, GRID_START_Y + SLOT_SIZE + SLOT_GAP_Y, SLOT_SIZE, SLOT_SIZE),
@@ -102,16 +110,17 @@ public class PlayerExamineOverlay extends Overlay
 		graphics.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
 		graphics.setFont(FontManager.getRunescapeSmallFont());
 
-		FooterLayout footerLayout = buildFooterLayout(graphics, data);
-		int frameHeight = Math.max(BASE_FRAME_HEIGHT, footerLayout.getFrameHeight());
+		PlayerExamineConfig.OverlayMode overlayMode = config.overlayMode();
+		ContentLayout contentLayout = buildContentLayout(graphics, data, overlayMode);
+		FooterLayout footerLayout = buildFooterLayout(graphics, data, contentLayout.getContentBottom());
+		int frameHeight = Math.max(contentLayout.getFrameHeight(), footerLayout.getFrameHeight());
 		Rectangle closeButton = new Rectangle(FRAME_WIDTH - 20, 2, 16, 14);
-		List<SlotState> slots = buildSlots(data);
 
 		drawFrame(graphics, data, closeButton, frameHeight);
-		drawSlots(graphics, slots);
+		drawContent(graphics, contentLayout);
 		drawFooter(graphics, footerLayout);
 
-		renderState = new RenderState(closeButton, slots, new Dimension(FRAME_WIDTH, frameHeight));
+		renderState = new RenderState(closeButton, contentLayout.getSlots(), contentLayout.getRows(), overlayMode, new Dimension(FRAME_WIDTH, frameHeight));
 		addHoverTooltip();
 		return renderState.getDimension();
 	}
@@ -154,7 +163,7 @@ public class PlayerExamineOverlay extends Overlay
 		drawCenteredShadowText(graphics, "X", closeButton, config.xTextColor());
 	}
 
-	private List<SlotState> buildSlots(PlayerExamineData data)
+	private ContentLayout buildContentLayout(Graphics2D graphics, PlayerExamineData data, PlayerExamineConfig.OverlayMode overlayMode)
 	{
 		Map<String, EquipmentEntry> entries = new HashMap<>();
 		for (EquipmentEntry entry : data.getEquipment())
@@ -174,7 +183,13 @@ public class PlayerExamineOverlay extends Overlay
 		slots.add(createSlot("gloves", SLOT_BOXES[8], entries.get("hands"), true, true));
 		slots.add(createSlot("boots", SLOT_BOXES[9], entries.get("boots"), true, true));
 		slots.add(createSlot("ring", SLOT_BOXES[10], null, true, false));
-		return slots;
+
+		if (overlayMode == PlayerExamineConfig.OverlayMode.List || overlayMode == PlayerExamineConfig.OverlayMode.Hybrid)
+		{
+			return buildListContent(graphics, data, slots, overlayMode == PlayerExamineConfig.OverlayMode.Hybrid);
+		}
+
+		return ContentLayout.forSlots(slots);
 	}
 
 	private SlotState createSlot(String key, Rectangle bounds, EquipmentEntry entry, boolean drawFrame, boolean showEmptyTooltip)
@@ -182,11 +197,170 @@ public class PlayerExamineOverlay extends Overlay
 		return new SlotState(key, bounds, entry, drawFrame, showEmptyTooltip);
 	}
 
+	private ContentLayout buildListContent(Graphics2D graphics, PlayerExamineData data, List<SlotState> slots, boolean showIcons)
+	{
+		FontMetrics metrics = graphics.getFontMetrics();
+		List<ListRow> rows = new ArrayList<>();
+		int currentY = LIST_START_Y;
+		int rowHeight = showIcons
+			? Math.max((metrics.getHeight() * 2), HYBRID_ICON_SIZE) + HYBRID_ROW_PADDING_Y
+			: Math.max(metrics.getHeight(), LIST_ICON_SIZE) + LIST_ROW_PADDING_Y;
+
+		for (SlotState slot : slots)
+		{
+			EquipmentEntry entry = slot.getEntry();
+			boolean hasItem = entry != null && entry.hasItem();
+			boolean visibleSlot = hasItem || slot.isShowEmptyTooltip();
+			if (config.hideNotVisibleSlots() && !visibleSlot)
+			{
+				continue;
+			}
+
+			if (showIcons)
+			{
+				rows.add(new ListRow(
+					slot,
+					new Rectangle(LIST_SIDE_PADDING, currentY, FRAME_WIDTH - (LIST_SIDE_PADDING * 2), rowHeight),
+					formatSlotLabel(slot.getKey()),
+					buildHybridValue(slot),
+					true));
+			}
+			else
+			{
+				rows.add(new ListRow(
+					slot,
+					new Rectangle(LIST_SIDE_PADDING, currentY, FRAME_WIDTH - (LIST_SIDE_PADDING * 2), rowHeight),
+					buildListText(slot),
+					null,
+					false));
+			}
+			currentY += rowHeight + 1;
+		}
+
+		return ContentLayout.forRows(slots, rows, rows.isEmpty() ? LIST_START_Y : currentY - 1);
+	}
+
+	private String buildListText(SlotState slot)
+	{
+		EquipmentEntry entry = slot.getEntry();
+		String label = formatSlotLabel(slot.getKey());
+		String value;
+
+		if (entry != null && entry.hasItem())
+		{
+			value = getDisplayItemName(entry);
+		}
+		else if (slot.isShowEmptyTooltip())
+		{
+			value = "None";
+		}
+		else
+		{
+			value = "Not visible";
+		}
+
+		return label + ": " + value;
+	}
+
+	private String buildHybridValue(SlotState slot)
+	{
+		EquipmentEntry entry = slot.getEntry();
+		if (entry != null && entry.hasItem())
+		{
+			return getDisplayItemName(entry);
+		}
+		if (slot.isShowEmptyTooltip())
+		{
+			return "None";
+		}
+		return "Not visible";
+	}
+
+	private static String formatSlotLabel(String key)
+	{
+		if (key == null || key.isEmpty())
+		{
+			return "";
+		}
+
+		StringBuilder builder = new StringBuilder(key.length());
+		boolean capitalizeNext = true;
+		for (int i = 0; i < key.length(); i++)
+		{
+			char c = key.charAt(i);
+			if (capitalizeNext)
+			{
+				builder.append(Character.toUpperCase(c));
+				capitalizeNext = false;
+			}
+			else
+			{
+				builder.append(c);
+			}
+		}
+		return builder.toString();
+	}
+
+	private void drawContent(Graphics2D graphics, ContentLayout contentLayout)
+	{
+		if (contentLayout.isListMode())
+		{
+			drawList(graphics, contentLayout.getRows());
+			return;
+		}
+
+		drawSlots(graphics, contentLayout.getSlots());
+	}
+
 	private void drawSlots(Graphics2D graphics, List<SlotState> slots)
 	{
 		for (SlotState slot : slots)
 		{
 			drawSlot(graphics, slot);
+		}
+	}
+
+	private void drawList(Graphics2D graphics, List<ListRow> rows)
+	{
+		FontMetrics metrics = graphics.getFontMetrics();
+		for (ListRow row : rows)
+		{
+			Rectangle bounds = row.getBounds();
+			int textX = bounds.x;
+			if (row.isShowIcon())
+			{
+				EquipmentEntry entry = row.getSlot().getEntry();
+				if (entry != null && entry.hasItem() && entry.getItemId() >= 0)
+				{
+					AsyncBufferedImage sprite = itemManager.getImage(entry.getItemId());
+					if (sprite != null)
+					{
+						int iconSize = HYBRID_ICON_SIZE;
+						int iconY = bounds.y + ((bounds.height - iconSize) / 2);
+						graphics.drawImage(sprite, bounds.x, iconY, iconSize, iconSize, null);
+					}
+				}
+
+				textX += HYBRID_ICON_SIZE + HYBRID_ICON_GAP;
+			}
+
+			String primaryText = row.getPrimaryText();
+			String secondaryText = row.getSecondaryText();
+			int availableWidth = FRAME_WIDTH - textX - LIST_SIDE_PADDING;
+			if (secondaryText == null)
+			{
+				int y = bounds.y + metrics.getAscent();
+				String fittedText = fitText(graphics, primaryText, availableWidth);
+				drawShadowText(graphics, fittedText, textX, y, config.combatTextColor());
+				continue;
+			}
+
+			int topBaseline = bounds.y + metrics.getAscent();
+			int bottomBaseline = topBaseline + metrics.getHeight();
+			String fittedPrimary = fitText(graphics, primaryText, availableWidth);
+			String fittedSecondary = fitText(graphics, secondaryText, availableWidth);
+			drawShadowText(graphics, fittedPrimary, textX, topBaseline, config.combatTextColor());
+			drawShadowText(graphics, fittedSecondary, textX, bottomBaseline, config.combatTextColor());
 		}
 	}
 
@@ -238,6 +412,31 @@ public class PlayerExamineOverlay extends Overlay
 
 		int localX = mouse.getX() - bounds.x;
 		int localY = mouse.getY() - bounds.y;
+		if (state.isListMode())
+		{
+			for (ListRow row : state.getRows())
+			{
+				if (row.getBounds().contains(localX, localY))
+				{
+					SlotState slot = row.getSlot();
+					if (slot.getEntry() != null && slot.getEntry().hasItem())
+					{
+						addItemTooltips(slot.getEntry());
+					}
+					else if (slot.isShowEmptyTooltip())
+					{
+						tooltipManager.add(new Tooltip("Nothing equipped"));
+					}
+					else if (!config.hideNotVisibleSlots())
+					{
+						tooltipManager.add(new Tooltip("Not visible from examine"));
+					}
+					return;
+				}
+			}
+			return;
+		}
+
 		for (SlotState slot : state.getSlots())
 		{
 			if (slot.getBounds().contains(localX, localY))
@@ -250,7 +449,7 @@ public class PlayerExamineOverlay extends Overlay
 				{
 					tooltipManager.add(new Tooltip("Nothing equipped"));
 				}
-				else
+				else if (!config.hideNotVisibleSlots())
 				{
 					tooltipManager.add(new Tooltip("Not visible from examine"));
 				}
@@ -280,25 +479,25 @@ public class PlayerExamineOverlay extends Overlay
 		}
 	}
 
-	private FooterLayout buildFooterLayout(Graphics2D graphics, PlayerExamineData data)
+	private FooterLayout buildFooterLayout(Graphics2D graphics, PlayerExamineData data, int contentBottom)
 	{
 		PlayerExamineConfig.TotalValueMode totalValueMode = config.totalValueMode();
 		if (totalValueMode == null || totalValueMode == PlayerExamineConfig.TotalValueMode.None)
 		{
-			return FooterLayout.empty();
+			return FooterLayout.empty(contentBottom);
 		}
 
 		FontMetrics metrics = graphics.getFontMetrics();
-		FooterLayout layout = buildTotalValueLayout(data, totalValueMode, metrics);
+		FooterLayout layout = buildTotalValueLayout(data, totalValueMode, metrics, contentBottom);
 		if (layout.isEmpty())
 		{
-			return FooterLayout.empty();
+			return FooterLayout.empty(contentBottom);
 		}
 
 		return layout;
 	}
 
-	private FooterLayout buildTotalValueLayout(PlayerExamineData data, PlayerExamineConfig.TotalValueMode totalValueMode, FontMetrics metrics)
+	private FooterLayout buildTotalValueLayout(PlayerExamineData data, PlayerExamineConfig.TotalValueMode totalValueMode, FontMetrics metrics, int contentBottom)
 	{
 		long geTotal = 0;
 		long haTotal = 0;
@@ -319,7 +518,7 @@ public class PlayerExamineOverlay extends Overlay
 		String haText = "HA Total: " + formatPrice(haTotal);
 		int footerWidth = FRAME_WIDTH - (FOOTER_SIDE_PADDING * 2);
 		int lineHeight = metrics.getHeight();
-		int footerStartY = SLOT_GRID_BOTTOM + FOOTER_TOP_MARGIN;
+		int footerStartY = contentBottom + FOOTER_TOP_MARGIN;
 
 		switch (totalValueMode)
 		{
@@ -348,7 +547,7 @@ public class PlayerExamineOverlay extends Overlay
 					FOOTER_LINE_GAP,
 					FOOTER_BOTTOM_MARGIN);
 			default:
-				return FooterLayout.empty();
+				return FooterLayout.empty(contentBottom);
 		}
 	}
 
@@ -449,9 +648,9 @@ public class PlayerExamineOverlay extends Overlay
 			this.frameHeight = frameHeight;
 		}
 
-		static FooterLayout empty()
+		static FooterLayout empty(int contentBottom)
 		{
-			return new FooterLayout(new ArrayList<>(), false, false, 0, BASE_FRAME_HEIGHT);
+			return new FooterLayout(new ArrayList<>(), false, false, contentBottom + FOOTER_BOTTOM_MARGIN, contentBottom + FOOTER_BOTTOM_MARGIN);
 		}
 
 		static FooterLayout single(FooterLine line, int startY, int lineHeight, int bottomMargin)
@@ -503,6 +702,59 @@ public class PlayerExamineOverlay extends Overlay
 		int getStartY()
 		{
 			return startY;
+		}
+
+		int getFrameHeight()
+		{
+			return frameHeight;
+		}
+	}
+
+	private static final class ContentLayout
+	{
+		private final List<SlotState> slots;
+		private final List<ListRow> rows;
+		private final boolean listMode;
+		private final int frameHeight;
+		private final int contentBottom;
+
+		private ContentLayout(List<SlotState> slots, List<ListRow> rows, boolean listMode, int frameHeight, int contentBottom)
+		{
+			this.slots = slots;
+			this.rows = rows;
+			this.listMode = listMode;
+			this.frameHeight = frameHeight;
+			this.contentBottom = contentBottom;
+		}
+
+		static ContentLayout forSlots(List<SlotState> slots)
+		{
+			return new ContentLayout(slots, new ArrayList<>(), false, BASE_FRAME_HEIGHT, SLOT_GRID_BOTTOM);
+		}
+
+		static ContentLayout forRows(List<SlotState> slots, List<ListRow> rows, int contentBottom)
+		{
+			return new ContentLayout(slots, rows, true, contentBottom + FOOTER_BOTTOM_MARGIN, contentBottom);
+		}
+
+		boolean isListMode()
+		{
+			return listMode;
+		}
+
+		List<SlotState> getSlots()
+		{
+			return slots;
+		}
+
+		List<ListRow> getRows()
+		{
+			return rows;
+		}
+
+		int getContentBottom()
+		{
+			return contentBottom;
 		}
 
 		int getFrameHeight()
@@ -608,18 +860,22 @@ public class PlayerExamineOverlay extends Overlay
 	{
 		private final Rectangle closeButton;
 		private final List<SlotState> slots;
+		private final List<ListRow> rows;
+		private final PlayerExamineConfig.OverlayMode overlayMode;
 		private final Dimension dimension;
 
-		private RenderState(Rectangle closeButton, List<SlotState> slots, Dimension dimension)
+		private RenderState(Rectangle closeButton, List<SlotState> slots, List<ListRow> rows, PlayerExamineConfig.OverlayMode overlayMode, Dimension dimension)
 		{
 			this.closeButton = closeButton;
 			this.slots = slots;
+			this.rows = rows;
+			this.overlayMode = overlayMode;
 			this.dimension = dimension;
 		}
 
 		public static RenderState empty()
 		{
-			return new RenderState(new Rectangle(), new ArrayList<>(), new Dimension(0, 0));
+			return new RenderState(new Rectangle(), new ArrayList<>(), new ArrayList<>(), PlayerExamineConfig.OverlayMode.Item, new Dimension(0, 0));
 		}
 
 		public boolean isEmpty()
@@ -635,6 +891,16 @@ public class PlayerExamineOverlay extends Overlay
 		public List<SlotState> getSlots()
 		{
 			return slots;
+		}
+
+		public List<ListRow> getRows()
+		{
+			return rows;
+		}
+
+		public boolean isListMode()
+		{
+			return overlayMode == PlayerExamineConfig.OverlayMode.List || overlayMode == PlayerExamineConfig.OverlayMode.Hybrid;
 		}
 
 		public SlotState getSlotAt(int localX, int localY)
@@ -695,6 +961,49 @@ public class PlayerExamineOverlay extends Overlay
 		public boolean isShowEmptyTooltip()
 		{
 			return showEmptyTooltip;
+		}
+	}
+
+	private static final class ListRow
+	{
+		private final SlotState slot;
+		private final Rectangle bounds;
+		private final String primaryText;
+		private final String secondaryText;
+		private final boolean showIcon;
+
+		private ListRow(SlotState slot, Rectangle bounds, String primaryText, String secondaryText, boolean showIcon)
+		{
+			this.slot = slot;
+			this.bounds = bounds;
+			this.primaryText = primaryText;
+			this.secondaryText = secondaryText;
+			this.showIcon = showIcon;
+		}
+
+		private SlotState getSlot()
+		{
+			return slot;
+		}
+
+		private Rectangle getBounds()
+		{
+			return bounds;
+		}
+
+		private String getPrimaryText()
+		{
+			return primaryText;
+		}
+
+		private String getSecondaryText()
+		{
+			return secondaryText;
+		}
+
+		private boolean isShowIcon()
+		{
+			return showIcon;
 		}
 	}
 }
