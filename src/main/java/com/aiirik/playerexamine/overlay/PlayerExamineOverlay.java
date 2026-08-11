@@ -181,14 +181,14 @@ public class PlayerExamineOverlay extends Overlay
 		slots.add(createSlot("helmet", SLOT_BOXES[0], entries.get("head"), true, true));
 		slots.add(createSlot("cape", SLOT_BOXES[1], entries.get("cape"), true, true));
 		slots.add(createSlot("necklace", SLOT_BOXES[2], entries.get("amulet"), true, true));
-		slots.add(createSlot("arrows", SLOT_BOXES[3], null, true, false));
+		slots.add(createSlot("arrows", SLOT_BOXES[3], null, !config.hideNotVisibleSlots(), false));
 		slots.add(createSlot("weapon", SLOT_BOXES[4], entries.get("weapon"), true, true));
 		slots.add(createSlot("body", SLOT_BOXES[5], entries.get("torso"), true, true));
 		slots.add(createSlot("offhand", SLOT_BOXES[6], entries.get("shield"), true, true));
 		slots.add(createSlot("legs", SLOT_BOXES[7], entries.get("legs"), true, true));
 		slots.add(createSlot("gloves", SLOT_BOXES[8], entries.get("hands"), true, true));
 		slots.add(createSlot("boots", SLOT_BOXES[9], entries.get("boots"), true, true));
-		slots.add(createSlot("ring", SLOT_BOXES[10], null, true, false));
+		slots.add(createSlot("ring", SLOT_BOXES[10], null, !config.hideNotVisibleSlots(), false));
 
 		if (overlayMode == PlayerExamineConfig.OverlayMode.List || overlayMode == PlayerExamineConfig.OverlayMode.Hybrid)
 		{

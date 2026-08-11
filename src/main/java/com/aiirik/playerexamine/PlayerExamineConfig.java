@@ -105,7 +105,7 @@ public interface PlayerExamineConfig extends Config
 		keyName = "hideNotVisibleSlots",
 		name = "Hide not visible slots",
 		section = OVERLAY_SECTION,
-		description = "Hide slots marked Not visible from examine in list and hybrid modes"
+		description = "Hide slots marked Not visible from examine in default, list, and hybrid modes"
 	)
 	default boolean hideNotVisibleSlots()
 	{
