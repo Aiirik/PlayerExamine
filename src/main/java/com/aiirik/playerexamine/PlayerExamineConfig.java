@@ -157,17 +157,6 @@ public interface PlayerExamineConfig extends Config
 	}
 
 	@ConfigItem(
-		keyName = "compareEquipmentBonuses",
-		name = "Compare equipped item bonuses",
-		section = ITEM_INFO_SECTION,
-		description = "Show a bonus delta column against your currently equipped item"
-	)
-	default boolean compareEquipmentBonuses()
-	{
-		return false;
-	}
-
-	@ConfigItem(
 		keyName = "tooltipItemTextColor",
 		name = "Item text",
 		section = TOOLTIP_COLORS_SECTION,
@@ -198,6 +187,17 @@ public interface PlayerExamineConfig extends Config
 	default Color tooltipValueTextColor()
 	{
 		return new Color(245, 240, 228);
+	}
+
+	@ConfigItem(
+		keyName = "compareEquipmentBonuses",
+		name = "Compare equipped item bonuses",
+		section = ITEM_INFO_SECTION,
+		description = "Show a bonus delta column against your currently equipped item"
+	)
+	default boolean compareEquipmentBonuses()
+	{
+		return false;
 	}
 
 	@ConfigItem(
