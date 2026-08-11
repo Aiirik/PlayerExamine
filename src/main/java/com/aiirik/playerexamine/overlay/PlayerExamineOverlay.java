@@ -38,7 +38,7 @@ import net.runelite.client.util.AsyncBufferedImage;
 
 public class PlayerExamineOverlay extends Overlay
 {
-	private static final int FRAME_WIDTH = 188;
+	private static final int BASE_FRAME_WIDTH = 188;
 	private static final int BASE_FRAME_HEIGHT = 248;
 	private static final int TITLE_BAR_HEIGHT = 18;
 	private static final int SLOT_SIZE = 34;
@@ -61,20 +61,6 @@ public class PlayerExamineOverlay extends Overlay
 	private static final int HYBRID_ICON_SIZE = 20;
 	private static final int HYBRID_ICON_GAP = 6;
 	private static final int HYBRID_ROW_PADDING_Y = 4;
-	private static final Rectangle[] SLOT_BOXES = {
-		new Rectangle(GRID_START_X + SLOT_SIZE + SLOT_GAP_X, GRID_START_Y, SLOT_SIZE, SLOT_SIZE),
-		new Rectangle(GRID_START_X, GRID_START_Y + SLOT_SIZE + SLOT_GAP_Y, SLOT_SIZE, SLOT_SIZE),
-		new Rectangle(GRID_START_X + SLOT_SIZE + SLOT_GAP_X, GRID_START_Y + SLOT_SIZE + SLOT_GAP_Y, SLOT_SIZE, SLOT_SIZE),
-		new Rectangle(GRID_START_X + 2 * (SLOT_SIZE + SLOT_GAP_X), GRID_START_Y + SLOT_SIZE + SLOT_GAP_Y, SLOT_SIZE, SLOT_SIZE),
-		new Rectangle(GRID_START_X, GRID_START_Y + 2 * (SLOT_SIZE + SLOT_GAP_Y), SLOT_SIZE, SLOT_SIZE),
-		new Rectangle(GRID_START_X + SLOT_SIZE + SLOT_GAP_X, GRID_START_Y + 2 * (SLOT_SIZE + SLOT_GAP_Y), SLOT_SIZE, SLOT_SIZE),
-		new Rectangle(GRID_START_X + 2 * (SLOT_SIZE + SLOT_GAP_X), GRID_START_Y + 2 * (SLOT_SIZE + SLOT_GAP_Y), SLOT_SIZE, SLOT_SIZE),
-		new Rectangle(GRID_START_X + SLOT_SIZE + SLOT_GAP_X, GRID_START_Y + 3 * (SLOT_SIZE + SLOT_GAP_Y), SLOT_SIZE, SLOT_SIZE),
-		new Rectangle(GRID_START_X, GRID_START_Y + 4 * (SLOT_SIZE + SLOT_GAP_Y), SLOT_SIZE, SLOT_SIZE),
-		new Rectangle(GRID_START_X + SLOT_SIZE + SLOT_GAP_X, GRID_START_Y + 4 * (SLOT_SIZE + SLOT_GAP_Y), SLOT_SIZE, SLOT_SIZE),
-		new Rectangle(GRID_START_X + 2 * (SLOT_SIZE + SLOT_GAP_X), GRID_START_Y + 4 * (SLOT_SIZE + SLOT_GAP_Y), SLOT_SIZE, SLOT_SIZE)
-	};
-
 	private final PlayerExaminePlugin plugin;
 	private final PlayerExamineConfig config;
 	private final Client client;
@@ -117,16 +103,17 @@ public class PlayerExamineOverlay extends Overlay
 		graphics.setFont(FontManager.getRunescapeSmallFont());
 
 		PlayerExamineConfig.OverlayMode overlayMode = config.overlayMode();
-		ContentLayout contentLayout = buildContentLayout(graphics, data, overlayMode);
-		FooterLayout footerLayout = buildFooterLayout(graphics, data, contentLayout.getContentBottom());
+		int frameWidth = config.overlayWidth();
+		ContentLayout contentLayout = buildContentLayout(graphics, data, overlayMode, frameWidth);
+		FooterLayout footerLayout = buildFooterLayout(graphics, data, contentLayout.getContentBottom(), frameWidth);
 		int frameHeight = Math.max(contentLayout.getFrameHeight(), footerLayout.getFrameHeight());
-		Rectangle closeButton = new Rectangle(FRAME_WIDTH - 20, 2, 16, 14);
+		Rectangle closeButton = new Rectangle(frameWidth - 20, 2, 16, 14);
 
-		drawFrame(graphics, data, closeButton, frameHeight);
-		drawContent(graphics, contentLayout);
-		drawFooter(graphics, footerLayout);
+		drawFrame(graphics, data, closeButton, frameHeight, frameWidth);
+		drawContent(graphics, contentLayout, frameWidth);
+		drawFooter(graphics, footerLayout, frameWidth);
 
-		renderState = new RenderState(closeButton, contentLayout.getSlots(), contentLayout.getRows(), overlayMode, new Dimension(FRAME_WIDTH, frameHeight));
+		renderState = new RenderState(closeButton, contentLayout.getSlots(), contentLayout.getRows(), overlayMode, new Dimension(frameWidth, frameHeight));
 		addHoverTooltip();
 		return renderState.getDimension();
 	}
@@ -136,30 +123,30 @@ public class PlayerExamineOverlay extends Overlay
 		return renderState;
 	}
 
-	private void drawFrame(Graphics2D graphics, PlayerExamineData data, Rectangle closeButton, int frameHeight)
+	private void drawFrame(Graphics2D graphics, PlayerExamineData data, Rectangle closeButton, int frameHeight, int frameWidth)
 	{
 		graphics.setColor(config.overlayBorderColor());
-		graphics.drawRect(0, 0, FRAME_WIDTH - 1, frameHeight - 1);
+		graphics.drawRect(0, 0, frameWidth - 1, frameHeight - 1);
 
 		Color backgroundColor = config.overlayBackgroundColor();
 		if (backgroundColor.getAlpha() > 0)
 		{
 			graphics.setColor(backgroundColor);
-			graphics.fillRect(1, 1, FRAME_WIDTH - 2, frameHeight - 2);
+			graphics.fillRect(1, 1, frameWidth - 2, frameHeight - 2);
 		}
 
 		graphics.setColor(config.overlayBorderColor());
 		graphics.setStroke(new BasicStroke(1f));
-		graphics.drawLine(2, TITLE_BAR_HEIGHT - 1, FRAME_WIDTH - 3, TITLE_BAR_HEIGHT - 1);
+		graphics.drawLine(2, TITLE_BAR_HEIGHT - 1, frameWidth - 3, TITLE_BAR_HEIGHT - 1);
 
 		FontMetrics metrics = graphics.getFontMetrics();
 		int titleBaseline = ((TITLE_BAR_HEIGHT - metrics.getHeight()) / 2) + metrics.getAscent() + 1;
 
-		String title = fitText(graphics, data.getName(), 74);
+		String title = fitText(graphics, data.getName(), Math.max(0, frameWidth - 114));
 		drawShadowText(graphics, title, 8, titleBaseline, config.usernameTextColor());
 
 		String combat = "Combat " + data.getCombatLevel();
-		drawShadowText(graphics, combat, 96, titleBaseline, config.combatTextColor());
+		drawShadowText(graphics, combat, Math.max(8, frameWidth - 92), titleBaseline, config.combatTextColor());
 
 		boolean hoverClose = isMouseInside(closeButton);
 		graphics.setColor(hoverClose ? config.overlayCloseHoverColor() : config.overlayCloseColor());
@@ -169,7 +156,7 @@ public class PlayerExamineOverlay extends Overlay
 		drawCenteredShadowText(graphics, "X", closeButton, config.xTextColor());
 	}
 
-	private ContentLayout buildContentLayout(Graphics2D graphics, PlayerExamineData data, PlayerExamineConfig.OverlayMode overlayMode)
+	private ContentLayout buildContentLayout(Graphics2D graphics, PlayerExamineData data, PlayerExamineConfig.OverlayMode overlayMode, int frameWidth)
 	{
 		Map<String, EquipmentEntry> entries = new HashMap<>();
 		for (EquipmentEntry entry : data.getEquipment())
@@ -177,22 +164,23 @@ public class PlayerExamineOverlay extends Overlay
 			entries.put(entry.getSlotName().toLowerCase(), entry);
 		}
 
+		Rectangle[] slotBoxes = buildSlotBoxes(frameWidth);
 		List<SlotState> slots = new ArrayList<>();
-		slots.add(createSlot("helmet", SLOT_BOXES[0], entries.get("head"), true, true));
-		slots.add(createSlot("cape", SLOT_BOXES[1], entries.get("cape"), true, true));
-		slots.add(createSlot("necklace", SLOT_BOXES[2], entries.get("amulet"), true, true));
-		slots.add(createSlot("arrows", SLOT_BOXES[3], null, !config.hideNotVisibleSlots(), false));
-		slots.add(createSlot("weapon", SLOT_BOXES[4], entries.get("weapon"), true, true));
-		slots.add(createSlot("body", SLOT_BOXES[5], entries.get("torso"), true, true));
-		slots.add(createSlot("offhand", SLOT_BOXES[6], entries.get("shield"), true, true));
-		slots.add(createSlot("legs", SLOT_BOXES[7], entries.get("legs"), true, true));
-		slots.add(createSlot("gloves", SLOT_BOXES[8], entries.get("hands"), true, true));
-		slots.add(createSlot("boots", SLOT_BOXES[9], entries.get("boots"), true, true));
-		slots.add(createSlot("ring", SLOT_BOXES[10], null, !config.hideNotVisibleSlots(), false));
+		slots.add(createSlot("helmet", slotBoxes[0], entries.get("head"), true, true));
+		slots.add(createSlot("cape", slotBoxes[1], entries.get("cape"), true, true));
+		slots.add(createSlot("necklace", slotBoxes[2], entries.get("amulet"), true, true));
+		slots.add(createSlot("arrows", slotBoxes[3], null, !config.hideNotVisibleSlots(), false));
+		slots.add(createSlot("weapon", slotBoxes[4], entries.get("weapon"), true, true));
+		slots.add(createSlot("body", slotBoxes[5], entries.get("torso"), true, true));
+		slots.add(createSlot("offhand", slotBoxes[6], entries.get("shield"), true, true));
+		slots.add(createSlot("legs", slotBoxes[7], entries.get("legs"), true, true));
+		slots.add(createSlot("gloves", slotBoxes[8], entries.get("hands"), true, true));
+		slots.add(createSlot("boots", slotBoxes[9], entries.get("boots"), true, true));
+		slots.add(createSlot("ring", slotBoxes[10], null, !config.hideNotVisibleSlots(), false));
 
 		if (overlayMode == PlayerExamineConfig.OverlayMode.List || overlayMode == PlayerExamineConfig.OverlayMode.Hybrid)
 		{
-			return buildListContent(graphics, data, slots, overlayMode == PlayerExamineConfig.OverlayMode.Hybrid);
+			return buildListContent(graphics, data, slots, overlayMode == PlayerExamineConfig.OverlayMode.Hybrid, frameWidth);
 		}
 
 		return ContentLayout.forSlots(slots);
@@ -203,7 +191,7 @@ public class PlayerExamineOverlay extends Overlay
 		return new SlotState(key, bounds, entry, drawFrame, showEmptyTooltip);
 	}
 
-	private ContentLayout buildListContent(Graphics2D graphics, PlayerExamineData data, List<SlotState> slots, boolean showIcons)
+	private ContentLayout buildListContent(Graphics2D graphics, PlayerExamineData data, List<SlotState> slots, boolean showIcons, int frameWidth)
 	{
 		FontMetrics metrics = graphics.getFontMetrics();
 		List<ListRow> rows = new ArrayList<>();
@@ -226,7 +214,7 @@ public class PlayerExamineOverlay extends Overlay
 			{
 				rows.add(new ListRow(
 					slot,
-					new Rectangle(LIST_SIDE_PADDING, currentY, FRAME_WIDTH - (LIST_SIDE_PADDING * 2), rowHeight),
+					new Rectangle(LIST_SIDE_PADDING, currentY, frameWidth - (LIST_SIDE_PADDING * 2), rowHeight),
 					formatSlotLabel(slot.getKey()),
 					buildSlotValue(slot),
 					true,
@@ -236,7 +224,7 @@ public class PlayerExamineOverlay extends Overlay
 			{
 				rows.add(new ListRow(
 					slot,
-					new Rectangle(LIST_SIDE_PADDING, currentY, FRAME_WIDTH - (LIST_SIDE_PADDING * 2), rowHeight),
+					new Rectangle(LIST_SIDE_PADDING, currentY, frameWidth - (LIST_SIDE_PADDING * 2), rowHeight),
 					formatSlotLabel(slot.getKey()),
 					buildSlotValue(slot),
 					false,
@@ -287,11 +275,11 @@ public class PlayerExamineOverlay extends Overlay
 		return builder.toString();
 	}
 
-	private void drawContent(Graphics2D graphics, ContentLayout contentLayout)
+	private void drawContent(Graphics2D graphics, ContentLayout contentLayout, int frameWidth)
 	{
 		if (contentLayout.isListMode())
 		{
-			drawList(graphics, contentLayout.getRows());
+			drawList(graphics, contentLayout.getRows(), frameWidth);
 			return;
 		}
 
@@ -306,7 +294,7 @@ public class PlayerExamineOverlay extends Overlay
 		}
 	}
 
-	private void drawList(Graphics2D graphics, List<ListRow> rows)
+	private void drawList(Graphics2D graphics, List<ListRow> rows, int frameWidth)
 	{
 		FontMetrics metrics = graphics.getFontMetrics();
 		for (ListRow row : rows)
@@ -332,7 +320,7 @@ public class PlayerExamineOverlay extends Overlay
 
 			String primaryText = row.getPrimaryText();
 			String secondaryText = row.getSecondaryText();
-			int availableWidth = FRAME_WIDTH - textX - LIST_SIDE_PADDING;
+			int availableWidth = frameWidth - textX - LIST_SIDE_PADDING;
 			if (secondaryText == null)
 			{
 				int y = bounds.y + metrics.getAscent();
@@ -397,6 +385,26 @@ public class PlayerExamineOverlay extends Overlay
 				graphics.drawImage(sprite, bounds.x + SLOT_INSET_X, bounds.y + SLOT_INSET_Y, iconSize, iconSize, null);
 			}
 		}
+	}
+
+	private Rectangle[] buildSlotBoxes(int frameWidth)
+	{
+		int gridWidth = (3 * SLOT_SIZE) + (2 * SLOT_GAP_X);
+		int gridStartX = Math.max((frameWidth - gridWidth) / 2, 0);
+
+		return new Rectangle[] {
+			new Rectangle(gridStartX + SLOT_SIZE + SLOT_GAP_X, GRID_START_Y, SLOT_SIZE, SLOT_SIZE),
+			new Rectangle(gridStartX, GRID_START_Y + SLOT_SIZE + SLOT_GAP_Y, SLOT_SIZE, SLOT_SIZE),
+			new Rectangle(gridStartX + SLOT_SIZE + SLOT_GAP_X, GRID_START_Y + SLOT_SIZE + SLOT_GAP_Y, SLOT_SIZE, SLOT_SIZE),
+			new Rectangle(gridStartX + 2 * (SLOT_SIZE + SLOT_GAP_X), GRID_START_Y + SLOT_SIZE + SLOT_GAP_Y, SLOT_SIZE, SLOT_SIZE),
+			new Rectangle(gridStartX, GRID_START_Y + 2 * (SLOT_SIZE + SLOT_GAP_Y), SLOT_SIZE, SLOT_SIZE),
+			new Rectangle(gridStartX + SLOT_SIZE + SLOT_GAP_X, GRID_START_Y + 2 * (SLOT_SIZE + SLOT_GAP_Y), SLOT_SIZE, SLOT_SIZE),
+			new Rectangle(gridStartX + 2 * (SLOT_SIZE + SLOT_GAP_X), GRID_START_Y + 2 * (SLOT_SIZE + SLOT_GAP_Y), SLOT_SIZE, SLOT_SIZE),
+			new Rectangle(gridStartX + SLOT_SIZE + SLOT_GAP_X, GRID_START_Y + 3 * (SLOT_SIZE + SLOT_GAP_Y), SLOT_SIZE, SLOT_SIZE),
+			new Rectangle(gridStartX, GRID_START_Y + 4 * (SLOT_SIZE + SLOT_GAP_Y), SLOT_SIZE, SLOT_SIZE),
+			new Rectangle(gridStartX + SLOT_SIZE + SLOT_GAP_X, GRID_START_Y + 4 * (SLOT_SIZE + SLOT_GAP_Y), SLOT_SIZE, SLOT_SIZE),
+			new Rectangle(gridStartX + 2 * (SLOT_SIZE + SLOT_GAP_X), GRID_START_Y + 4 * (SLOT_SIZE + SLOT_GAP_Y), SLOT_SIZE, SLOT_SIZE)
+		};
 	}
 
 	private void addHoverTooltip()
@@ -712,7 +720,7 @@ public class PlayerExamineOverlay extends Overlay
 		ASPEED
 	}
 
-	private FooterLayout buildFooterLayout(Graphics2D graphics, PlayerExamineData data, int contentBottom)
+	private FooterLayout buildFooterLayout(Graphics2D graphics, PlayerExamineData data, int contentBottom, int frameWidth)
 	{
 		PlayerExamineConfig.TotalValueMode totalValueMode = config.totalValueMode();
 		if (totalValueMode == null || totalValueMode == PlayerExamineConfig.TotalValueMode.None)
@@ -721,7 +729,7 @@ public class PlayerExamineOverlay extends Overlay
 		}
 
 		FontMetrics metrics = graphics.getFontMetrics();
-		FooterLayout layout = buildTotalValueLayout(data, totalValueMode, metrics, contentBottom);
+		FooterLayout layout = buildTotalValueLayout(data, totalValueMode, metrics, contentBottom, frameWidth);
 		if (layout.isEmpty())
 		{
 			return FooterLayout.empty(contentBottom);
@@ -730,7 +738,7 @@ public class PlayerExamineOverlay extends Overlay
 		return layout;
 	}
 
-	private FooterLayout buildTotalValueLayout(PlayerExamineData data, PlayerExamineConfig.TotalValueMode totalValueMode, FontMetrics metrics, int contentBottom)
+	private FooterLayout buildTotalValueLayout(PlayerExamineData data, PlayerExamineConfig.TotalValueMode totalValueMode, FontMetrics metrics, int contentBottom, int frameWidth)
 	{
 		long geTotal = 0;
 		long haTotal = 0;
@@ -749,7 +757,7 @@ public class PlayerExamineOverlay extends Overlay
 
 		String geText = "GE Total: " + formatPrice(geTotal);
 		String haText = "HA Total: " + formatPrice(haTotal);
-		int footerWidth = FRAME_WIDTH - (FOOTER_SIDE_PADDING * 2);
+		int footerWidth = frameWidth - (FOOTER_SIDE_PADDING * 2);
 		int lineHeight = metrics.getHeight();
 		int footerStartY = contentBottom + FOOTER_TOP_MARGIN;
 
@@ -784,7 +792,7 @@ public class PlayerExamineOverlay extends Overlay
 		}
 	}
 
-	private void drawFooter(Graphics2D graphics, FooterLayout footerLayout)
+	private void drawFooter(Graphics2D graphics, FooterLayout footerLayout, int frameWidth)
 	{
 		if (footerLayout.isEmpty())
 		{
@@ -798,7 +806,7 @@ public class PlayerExamineOverlay extends Overlay
 			int currentY = startY;
 			for (FooterLine line : footerLayout.getLines())
 			{
-				drawCenteredShadowText(graphics, line.getText(), new Rectangle(0, currentY, FRAME_WIDTH, metrics.getHeight()), line.getColor());
+				drawCenteredShadowText(graphics, line.getText(), new Rectangle(0, currentY, frameWidth, metrics.getHeight()), line.getColor());
 				currentY += metrics.getHeight() + FOOTER_LINE_GAP;
 			}
 			return;
@@ -812,23 +820,24 @@ public class PlayerExamineOverlay extends Overlay
 				footerLayout.getLines().get(0),
 				footerLayout.getLines().get(1),
 				lineY,
-				metrics);
+				metrics,
+				frameWidth);
 			return;
 		}
 
 		FooterLine line = footerLayout.getLines().get(0);
 		int lineY = footerLayout.getStartY();
-		drawCenteredShadowText(graphics, line.getText(), new Rectangle(0, lineY, FRAME_WIDTH, metrics.getHeight()), line.getColor());
+		drawCenteredShadowText(graphics, line.getText(), new Rectangle(0, lineY, frameWidth, metrics.getHeight()), line.getColor());
 	}
 
-	private void drawCenteredInlineFooter(Graphics2D graphics, FooterLine left, FooterLine right, int y, FontMetrics metrics)
+	private void drawCenteredInlineFooter(Graphics2D graphics, FooterLine left, FooterLine right, int y, FontMetrics metrics, int frameWidth)
 	{
 		String separator = "  |  ";
 		int leftWidth = metrics.stringWidth(left.getText());
 		int separatorWidth = metrics.stringWidth(separator);
 		int rightWidth = metrics.stringWidth(right.getText());
 		int totalWidth = leftWidth + separatorWidth + rightWidth;
-		int x = (FRAME_WIDTH - totalWidth) / 2;
+		int x = (frameWidth - totalWidth) / 2;
 		int baseline = y + metrics.getAscent();
 
 		drawShadowText(graphics, left.getText(), x, baseline, left.getColor());

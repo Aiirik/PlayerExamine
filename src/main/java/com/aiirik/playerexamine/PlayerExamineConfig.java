@@ -6,6 +6,7 @@ import net.runelite.client.config.Config;
 import net.runelite.client.config.ConfigGroup;
 import net.runelite.client.config.ConfigItem;
 import net.runelite.client.config.ConfigSection;
+import net.runelite.client.config.Range;
 
 @ConfigGroup("player-examine")
 public interface PlayerExamineConfig extends Config
@@ -90,27 +91,40 @@ public interface PlayerExamineConfig extends Config
 	}
 
 	@ConfigItem(
+		keyName = "overlayMode",
+		name = "Overlay mode",
+		position = 1,
+		section = OVERLAY_SECTION,
+		description = "Choose between visual equipment boxes or a text list"
+	)
+	default OverlayMode overlayMode()
+	{
+		return OverlayMode.Item;
+	}
+
+	@ConfigItem(
+		keyName = "overlayWidth",
+		name = "Overlay width",
+		position = 2,
+		section = OVERLAY_SECTION,
+		description = "Set the overlay width in pixels"
+	)
+	@Range(min = 160, max = 220)
+	default int overlayWidth()
+	{
+		return 188;
+	}
+
+	@ConfigItem(
 		keyName = "totalValueMode",
 		name = "Total value",
-		position = 1,
+		position = 3,
 		section = OVERLAY_SECTION,
 		description = "Show total equipment value in the overlay footer"
 	)
 	default TotalValueMode totalValueMode()
 	{
 		return TotalValueMode.None;
-	}
-
-	@ConfigItem(
-		keyName = "overlayMode",
-		name = "Overlay mode",
-		position = 2,
-		section = OVERLAY_SECTION,
-		description = "Choose between item icons or a text list"
-	)
-	default OverlayMode overlayMode()
-	{
-		return OverlayMode.Item;
 	}
 
 	@ConfigItem(

@@ -7,6 +7,7 @@
 - Adds an optional hover comparison view for equipment bonuses against your currently equipped item.
 - Splits tooltip styling into separate configurable colors for item text, label text, value text, and bonus deltas.
 - Colors hovered item names and bonus section headers to match the RuneLite-style tooltip presentation.
+- Adds a configurable overlay width so the visual layout can be made more compact.
 
 ## 1.0.0 - 1 Aug 2026
 
