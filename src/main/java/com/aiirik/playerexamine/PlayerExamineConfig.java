@@ -13,6 +13,7 @@ public interface PlayerExamineConfig extends Config
 	String OVERLAY_SECTION = "overlay";
 	String OVERLAY_COLORS_SECTION = "overlayColors";
 	String ITEM_INFO_SECTION = "itemInfo";
+	String TOOLTIP_COLORS_SECTION = "tooltipColors";
 
 	enum TotalValueMode
 	{
@@ -58,6 +59,14 @@ public interface PlayerExamineConfig extends Config
 		closedByDefault = true
 	)
 	String itemInfoSection = ITEM_INFO_SECTION;
+
+	@ConfigSection(
+		name = "Tooltip Colors",
+		description = "Equipment tooltip color settings",
+		position = 3,
+		closedByDefault = true
+	)
+	String tooltipColorsSection = TOOLTIP_COLORS_SECTION;
 
 	@ConfigItem(
 		keyName = "disableUpdateNotifications",
@@ -134,6 +143,83 @@ public interface PlayerExamineConfig extends Config
 	default boolean showHaValue()
 	{
 		return false;
+	}
+
+	@ConfigItem(
+		keyName = "showEquipmentBonuses",
+		name = "Show equipment bonuses",
+		section = ITEM_INFO_SECTION,
+		description = "Show weapon and armor bonuses in item hover tooltips"
+	)
+	default boolean showEquipmentBonuses()
+	{
+		return false;
+	}
+
+	@ConfigItem(
+		keyName = "compareEquipmentBonuses",
+		name = "Compare equipped item bonuses",
+		section = ITEM_INFO_SECTION,
+		description = "Show a bonus delta column against your currently equipped item"
+	)
+	default boolean compareEquipmentBonuses()
+	{
+		return false;
+	}
+
+	@ConfigItem(
+		keyName = "tooltipItemTextColor",
+		name = "Item text",
+		section = TOOLTIP_COLORS_SECTION,
+		description = "Hovered item name and tooltip section header color"
+	)
+	default Color tooltipItemTextColor()
+	{
+		return new Color(215, 125, 40);
+	}
+
+	@ConfigItem(
+		keyName = "tooltipOtherTextColor",
+		name = "Label text",
+		section = TOOLTIP_COLORS_SECTION,
+		description = "Tooltip labels and section headers color"
+	)
+	default Color tooltipOtherTextColor()
+	{
+		return new Color(235, 226, 193);
+	}
+
+	@ConfigItem(
+		keyName = "tooltipValueTextColor",
+		name = "Value text",
+		section = TOOLTIP_COLORS_SECTION,
+		description = "Tooltip numeric value color"
+	)
+	default Color tooltipValueTextColor()
+	{
+		return new Color(245, 240, 228);
+	}
+
+	@ConfigItem(
+		keyName = "tooltipPositiveBonusColor",
+		name = "+ bonus",
+		section = TOOLTIP_COLORS_SECTION,
+		description = "Tooltip color for positive bonus differences"
+	)
+	default Color tooltipPositiveBonusColor()
+	{
+		return new Color(0, 192, 0);
+	}
+
+	@ConfigItem(
+		keyName = "tooltipNegativeBonusColor",
+		name = "- bonus",
+		section = TOOLTIP_COLORS_SECTION,
+		description = "Tooltip color for negative bonus differences"
+	)
+	default Color tooltipNegativeBonusColor()
+	{
+		return new Color(192, 48, 48);
 	}
 
 	@ConfigItem(

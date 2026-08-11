@@ -19,8 +19,13 @@ import java.util.List;
 import java.util.Map;
 import javax.inject.Inject;
 import net.runelite.api.Client;
+import net.runelite.api.Item;
+import net.runelite.api.ItemContainer;
 import net.runelite.api.Point;
+import net.runelite.api.gameval.InventoryID;
+import net.runelite.client.game.ItemEquipmentStats;
 import net.runelite.client.game.ItemManager;
+import net.runelite.client.game.ItemStats;
 import net.runelite.client.ui.FontManager;
 import net.runelite.client.ui.overlay.Overlay;
 import net.runelite.client.ui.overlay.OverlayLayer;
@@ -28,6 +33,7 @@ import net.runelite.client.ui.overlay.OverlayPosition;
 import net.runelite.client.ui.overlay.OverlayPriority;
 import net.runelite.client.ui.overlay.tooltip.Tooltip;
 import net.runelite.client.ui.overlay.tooltip.TooltipManager;
+import net.runelite.client.util.ColorUtil;
 import net.runelite.client.util.AsyncBufferedImage;
 
 public class PlayerExamineOverlay extends Overlay
@@ -460,23 +466,252 @@ public class PlayerExamineOverlay extends Overlay
 
 	private void addItemTooltips(EquipmentEntry entry)
 	{
-		tooltipManager.add(new Tooltip(getDisplayItemName(entry)));
+		tooltipManager.add(new Tooltip(formatTooltipLabel(getDisplayItemName(entry))));
 
 		List<String> valueLines = new ArrayList<>();
 		if (config.showGeValue())
 		{
-			valueLines.add("GE: " + formatPrice(itemManager.getItemPriceWithSource(entry.getItemId(), false)));
+			valueLines.add(formatTooltipStatLine("GE", formatPrice(itemManager.getItemPriceWithSource(entry.getItemId(), false)), null));
 		}
 
 		if (config.showHaValue())
 		{
-			valueLines.add("HA: " + formatPrice(client.getItemDefinition(entry.getItemId()).getHaPrice()));
+			valueLines.add(formatTooltipStatLine("HA", formatPrice(client.getItemDefinition(entry.getItemId()).getHaPrice()), null));
 		}
 
 		if (!valueLines.isEmpty())
 		{
 			tooltipManager.add(new Tooltip(String.join("<br>", valueLines)));
 		}
+
+		if (config.showEquipmentBonuses())
+		{
+			String equipmentBonusTooltip = buildEquipmentBonusTooltip(entry.getItemId());
+			if (!equipmentBonusTooltip.isEmpty())
+			{
+				tooltipManager.add(new Tooltip(equipmentBonusTooltip));
+			}
+		}
+	}
+
+	private String buildEquipmentBonusTooltip(int itemId)
+	{
+		ItemStats stats = itemManager.getItemStats(itemId);
+		if (stats == null || !stats.isEquipable())
+		{
+			return "";
+		}
+
+		ItemEquipmentStats equipment = stats.getEquipment();
+		if (equipment == null)
+		{
+			return "";
+		}
+
+		ItemEquipmentStats equippedEquipment = null;
+		if (config.compareEquipmentBonuses())
+		{
+			equippedEquipment = getEquippedEquipmentStats(equipment.getSlot());
+		}
+
+		List<String> lines = new ArrayList<>();
+
+		List<String> attackLines = new ArrayList<>();
+		addBonusLine(attackLines, "Stab", equipment.getAstab(), getCurrentBonus(equippedEquipment, BonusType.ASTAB), false);
+		addBonusLine(attackLines, "Slash", equipment.getAslash(), getCurrentBonus(equippedEquipment, BonusType.ASLASH), false);
+		addBonusLine(attackLines, "Crush", equipment.getAcrush(), getCurrentBonus(equippedEquipment, BonusType.ACRUSH), false);
+		addBonusLine(attackLines, "Magic", equipment.getAmagic(), getCurrentBonus(equippedEquipment, BonusType.AMAGIC), false);
+		addBonusLine(attackLines, "Range", equipment.getArange(), getCurrentBonus(equippedEquipment, BonusType.ARANGE), false);
+		if (!attackLines.isEmpty())
+		{
+			lines.add(formatTooltipLabel("Attack Bonus"));
+			lines.addAll(attackLines);
+		}
+
+		List<String> defenceLines = new ArrayList<>();
+		addBonusLine(defenceLines, "Stab", equipment.getDstab(), getCurrentBonus(equippedEquipment, BonusType.DSTAB), false);
+		addBonusLine(defenceLines, "Slash", equipment.getDslash(), getCurrentBonus(equippedEquipment, BonusType.DSLASH), false);
+		addBonusLine(defenceLines, "Crush", equipment.getDcrush(), getCurrentBonus(equippedEquipment, BonusType.DCRUSH), false);
+		addBonusLine(defenceLines, "Magic", equipment.getDmagic(), getCurrentBonus(equippedEquipment, BonusType.DMAGIC), false);
+		addBonusLine(defenceLines, "Range", equipment.getDrange(), getCurrentBonus(equippedEquipment, BonusType.DRANGE), false);
+		if (!defenceLines.isEmpty())
+		{
+			lines.add(formatTooltipLabel("Defence Bonus"));
+			lines.addAll(defenceLines);
+		}
+
+		addBonusLine(lines, "Strength", equipment.getStr(), getCurrentBonus(equippedEquipment, BonusType.STR), false);
+		addBonusLine(lines, "Ranged Str", equipment.getRstr(), getCurrentBonus(equippedEquipment, BonusType.RSTR), false);
+		addBonusLine(lines, "Magic Dmg", equipment.getMdmg(), getCurrentBonus(equippedEquipment, BonusType.MDMG), true);
+		addBonusLine(lines, "Prayer", equipment.getPrayer(), getCurrentBonus(equippedEquipment, BonusType.PRAYER), false);
+		addBonusLine(lines, "Speed", equipment.getAspeed(), getCurrentBonus(equippedEquipment, BonusType.ASPEED), false);
+
+		return lines.isEmpty() ? "" : String.join("<br>", lines);
+	}
+
+	private ItemEquipmentStats getEquippedEquipmentStats(int slot)
+	{
+		ItemContainer container = client.getItemContainer(InventoryID.WORN);
+		if (container == null)
+		{
+			return null;
+		}
+
+		Item item = container.getItem(slot);
+		if (item == null)
+		{
+			return null;
+		}
+
+		ItemStats stats = itemManager.getItemStats(item.getId());
+		return stats != null ? stats.getEquipment() : null;
+	}
+
+	private double getCurrentBonus(ItemEquipmentStats equipment, BonusType type)
+	{
+		if (equipment == null)
+		{
+			return 0;
+		}
+
+		switch (type)
+		{
+			case ASTAB:
+				return equipment.getAstab();
+			case ASLASH:
+				return equipment.getAslash();
+			case ACRUSH:
+				return equipment.getAcrush();
+			case AMAGIC:
+				return equipment.getAmagic();
+			case ARANGE:
+				return equipment.getArange();
+			case DSTAB:
+				return equipment.getDstab();
+			case DSLASH:
+				return equipment.getDslash();
+			case DCRUSH:
+				return equipment.getDcrush();
+			case DMAGIC:
+				return equipment.getDmagic();
+			case DRANGE:
+				return equipment.getDrange();
+			case STR:
+				return equipment.getStr();
+			case RSTR:
+				return equipment.getRstr();
+			case MDMG:
+				return equipment.getMdmg();
+			case PRAYER:
+				return equipment.getPrayer();
+			case ASPEED:
+				return equipment.getAspeed();
+			default:
+				return 0;
+		}
+	}
+
+	private void addBonusLine(List<String> lines, String label, double value, double currentValue, boolean percent)
+	{
+		if (value == 0 && currentValue == 0)
+		{
+			return;
+		}
+
+		String formattedValue = formatSignedValue(value, percent);
+		if (config.compareEquipmentBonuses())
+		{
+			double delta = value - currentValue;
+			String formattedDelta = formatDelta(delta, percent, label.equals("Speed"));
+			lines.add(formatTooltipStatLine(label, formattedValue, formattedDelta));
+			return;
+		}
+
+		lines.add(formatTooltipStatLine(label, formattedValue, null));
+	}
+
+	private String formatSignedValue(double value, boolean percent)
+	{
+		String formatted = formatNumber(value);
+		if (value > 0)
+		{
+			formatted = "+" + formatted;
+		}
+
+		return percent ? formatted + "%" : formatted;
+	}
+
+	private String formatDelta(double delta, boolean percent, boolean lowerIsBetter)
+	{
+		String formatted = formatSignedValue(delta, percent);
+		Color color;
+		if (delta == 0)
+		{
+			color = Color.GRAY;
+		}
+		else if (lowerIsBetter)
+		{
+			color = delta < 0 ? config.tooltipPositiveBonusColor() : config.tooltipNegativeBonusColor();
+		}
+		else
+		{
+			color = delta > 0 ? config.tooltipPositiveBonusColor() : config.tooltipNegativeBonusColor();
+		}
+
+		return ColorUtil.wrapWithColorTag("(" + formatted + ")", color);
+	}
+
+	private String formatTooltipLabel(String text)
+	{
+		return ColorUtil.wrapWithColorTag(text, config.tooltipItemTextColor());
+	}
+
+	private String formatTooltipStatLine(String label, String value, String delta)
+	{
+		StringBuilder builder = new StringBuilder();
+		builder.append(ColorUtil.wrapWithColorTag(label + ": ", config.tooltipOtherTextColor()));
+		builder.append(ColorUtil.wrapWithColorTag(value, config.tooltipValueTextColor()));
+		if (delta != null)
+		{
+			builder.append("  ").append(delta);
+		}
+
+		return builder.toString();
+	}
+
+	private String formatNumber(double value)
+	{
+		if (value == (long) value)
+		{
+			return Long.toString((long) value);
+		}
+
+		String text = Double.toString(value);
+		if (text.endsWith(".0"))
+		{
+			return text.substring(0, text.length() - 2);
+		}
+
+		return text;
+	}
+
+	private enum BonusType
+	{
+		ASTAB,
+		ASLASH,
+		ACRUSH,
+		AMAGIC,
+		ARANGE,
+		DSTAB,
+		DSLASH,
+		DCRUSH,
+		DMAGIC,
+		DRANGE,
+		STR,
+		RSTR,
+		MDMG,
+		PRAYER,
+		ASPEED
 	}
 
 	private FooterLayout buildFooterLayout(Graphics2D graphics, PlayerExamineData data, int contentBottom)

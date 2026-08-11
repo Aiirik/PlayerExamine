@@ -8,7 +8,7 @@ final class PlayerExamineChangelog
 	static final String VERSION = "1.0.0";
 
 	private static final List<String> CHANGES = Arrays.asList(
-		"Player Examine plugin has updated. See the plugin config for new settings!");
+		"New features available in the plugin settings.");
 
 	private PlayerExamineChangelog()
 	{
