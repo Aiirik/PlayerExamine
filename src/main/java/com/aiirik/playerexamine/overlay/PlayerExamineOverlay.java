@@ -153,7 +153,7 @@ public class PlayerExamineOverlay extends Overlay
 		graphics.drawLine(2, TITLE_BAR_HEIGHT - 1, FRAME_WIDTH - 3, TITLE_BAR_HEIGHT - 1);
 
 		FontMetrics metrics = graphics.getFontMetrics();
-		int titleBaseline = 2 + metrics.getAscent();
+		int titleBaseline = ((TITLE_BAR_HEIGHT - metrics.getHeight()) / 2) + metrics.getAscent() + 1;
 
 		String title = fitText(graphics, data.getName(), 74);
 		drawShadowText(graphics, title, 8, titleBaseline, config.usernameTextColor());
