@@ -228,7 +228,8 @@ public class PlayerExamineOverlay extends Overlay
 					slot,
 					new Rectangle(LIST_SIDE_PADDING, currentY, FRAME_WIDTH - (LIST_SIDE_PADDING * 2), rowHeight),
 					formatSlotLabel(slot.getKey()),
-					buildHybridValue(slot),
+					buildSlotValue(slot),
+					true,
 					true));
 			}
 			else
@@ -236,8 +237,9 @@ public class PlayerExamineOverlay extends Overlay
 				rows.add(new ListRow(
 					slot,
 					new Rectangle(LIST_SIDE_PADDING, currentY, FRAME_WIDTH - (LIST_SIDE_PADDING * 2), rowHeight),
-					buildListText(slot),
-					null,
+					formatSlotLabel(slot.getKey()),
+					buildSlotValue(slot),
+					false,
 					false));
 			}
 			currentY += rowHeight + 1;
@@ -246,29 +248,7 @@ public class PlayerExamineOverlay extends Overlay
 		return ContentLayout.forRows(slots, rows, rows.isEmpty() ? LIST_START_Y : currentY - 1);
 	}
 
-	private String buildListText(SlotState slot)
-	{
-		EquipmentEntry entry = slot.getEntry();
-		String label = formatSlotLabel(slot.getKey());
-		String value;
-
-		if (entry != null && entry.hasItem())
-		{
-			value = getDisplayItemName(entry);
-		}
-		else if (slot.isShowEmptyTooltip())
-		{
-			value = "None";
-		}
-		else
-		{
-			value = "Not visible";
-		}
-
-		return label + ": " + value;
-	}
-
-	private String buildHybridValue(SlotState slot)
+	private String buildSlotValue(SlotState slot)
 	{
 		EquipmentEntry entry = slot.getEntry();
 		if (entry != null && entry.hasItem())
@@ -357,7 +337,25 @@ public class PlayerExamineOverlay extends Overlay
 			{
 				int y = bounds.y + metrics.getAscent();
 				String fittedText = fitText(graphics, primaryText, availableWidth);
-				drawShadowText(graphics, fittedText, textX, y, config.combatTextColor());
+				drawShadowText(graphics, fittedText, textX, y, config.listStyleLabelColor());
+				continue;
+			}
+
+			if (!row.isStackedText())
+			{
+				int y = bounds.y + metrics.getAscent();
+				String fittedPrimary = fitText(graphics, primaryText, availableWidth);
+				int labelWidth = metrics.stringWidth(fittedPrimary);
+				int separatorWidth = metrics.stringWidth(": ");
+				int valueWidth = availableWidth - labelWidth - separatorWidth;
+				if (valueWidth < 0)
+				{
+					valueWidth = 0;
+				}
+
+				String fittedSecondary = fitText(graphics, secondaryText, valueWidth);
+				drawShadowText(graphics, fittedPrimary + ": ", textX, y, config.listStyleLabelColor());
+				drawShadowText(graphics, fittedSecondary, textX + labelWidth + separatorWidth, y, config.listStyleValueColor());
 				continue;
 			}
 
@@ -365,8 +363,8 @@ public class PlayerExamineOverlay extends Overlay
 			int bottomBaseline = topBaseline + metrics.getHeight();
 			String fittedPrimary = fitText(graphics, primaryText, availableWidth);
 			String fittedSecondary = fitText(graphics, secondaryText, availableWidth);
-			drawShadowText(graphics, fittedPrimary, textX, topBaseline, config.combatTextColor());
-			drawShadowText(graphics, fittedSecondary, textX, bottomBaseline, config.combatTextColor());
+			drawShadowText(graphics, fittedPrimary, textX, topBaseline, config.listStyleLabelColor());
+			drawShadowText(graphics, fittedSecondary, textX, bottomBaseline, config.listStyleValueColor());
 		}
 	}
 
@@ -1206,14 +1204,16 @@ public class PlayerExamineOverlay extends Overlay
 		private final String primaryText;
 		private final String secondaryText;
 		private final boolean showIcon;
+		private final boolean stackedText;
 
-		private ListRow(SlotState slot, Rectangle bounds, String primaryText, String secondaryText, boolean showIcon)
+		private ListRow(SlotState slot, Rectangle bounds, String primaryText, String secondaryText, boolean showIcon, boolean stackedText)
 		{
 			this.slot = slot;
 			this.bounds = bounds;
 			this.primaryText = primaryText;
 			this.secondaryText = secondaryText;
 			this.showIcon = showIcon;
+			this.stackedText = stackedText;
 		}
 
 		private SlotState getSlot()
@@ -1239,6 +1239,11 @@ public class PlayerExamineOverlay extends Overlay
 		private boolean isShowIcon()
 		{
 			return showIcon;
+		}
+
+		private boolean isStackedText()
+		{
+			return stackedText;
 		}
 	}
 }

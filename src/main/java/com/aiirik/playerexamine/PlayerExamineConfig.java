@@ -13,6 +13,7 @@ public interface PlayerExamineConfig extends Config
 	String OVERLAY_SECTION = "overlay";
 	String OVERLAY_COLORS_SECTION = "overlayColors";
 	String ITEM_INFO_SECTION = "itemInfo";
+	String LIST_STYLE_COLORS_SECTION = "listStyleColors";
 	String TOOLTIP_COLORS_SECTION = "tooltipColors";
 
 	enum TotalValueMode
@@ -30,7 +31,7 @@ public interface PlayerExamineConfig extends Config
 			@Override
 			public String toString()
 			{
-				return "Default";
+				return "Visual";
 			}
 		},
 		List,
@@ -45,14 +46,6 @@ public interface PlayerExamineConfig extends Config
 	String overlaySection = OVERLAY_SECTION;
 
 	@ConfigSection(
-		name = "Overlay Colors",
-		description = "Overlay color settings",
-		position = 2,
-		closedByDefault = true
-	)
-	String overlayColorsSection = OVERLAY_COLORS_SECTION;
-
-	@ConfigSection(
 		name = "Item Info",
 		description = "Equipment hover and wiki settings",
 		position = 1,
@@ -61,9 +54,25 @@ public interface PlayerExamineConfig extends Config
 	String itemInfoSection = ITEM_INFO_SECTION;
 
 	@ConfigSection(
+		name = "Visual Overlay Colors",
+		description = "Visual overlay color settings",
+		position = 2,
+		closedByDefault = true
+	)
+	String overlayColorsSection = OVERLAY_COLORS_SECTION;
+
+	@ConfigSection(
+		name = "List Style Colors",
+		description = "List and hybrid overlay color settings",
+		position = 3,
+		closedByDefault = true
+	)
+	String listStyleColorsSection = LIST_STYLE_COLORS_SECTION;
+
+	@ConfigSection(
 		name = "Tooltip Colors",
 		description = "Equipment tooltip color settings",
-		position = 3,
+		position = 4,
 		closedByDefault = true
 	)
 	String tooltipColorsSection = TOOLTIP_COLORS_SECTION;
@@ -71,6 +80,7 @@ public interface PlayerExamineConfig extends Config
 	@ConfigItem(
 		keyName = "disableUpdateNotifications",
 		name = "Disable update notifications",
+		position = 4,
 		section = OVERLAY_SECTION,
 		description = "Hide the chatbox message shown when Player Examine updates"
 	)
@@ -82,6 +92,7 @@ public interface PlayerExamineConfig extends Config
 	@ConfigItem(
 		keyName = "totalValueMode",
 		name = "Total value",
+		position = 1,
 		section = OVERLAY_SECTION,
 		description = "Show total equipment value in the overlay footer"
 	)
@@ -93,6 +104,7 @@ public interface PlayerExamineConfig extends Config
 	@ConfigItem(
 		keyName = "overlayMode",
 		name = "Overlay mode",
+		position = 2,
 		section = OVERLAY_SECTION,
 		description = "Choose between item icons or a text list"
 	)
@@ -104,6 +116,7 @@ public interface PlayerExamineConfig extends Config
 	@ConfigItem(
 		keyName = "hideNotVisibleSlots",
 		name = "Hide not visible slots",
+		position = 0,
 		section = OVERLAY_SECTION,
 		description = "Hide slots marked Not visible from examine in default, list, and hybrid modes"
 	)
@@ -115,6 +128,7 @@ public interface PlayerExamineConfig extends Config
 	@ConfigItem(
 		keyName = "hideMembersSuffix",
 		name = "Show (Members)",
+		position = 0,
 		section = ITEM_INFO_SECTION,
 		description = "Show item names with the (Members) suffix"
 	)
@@ -126,6 +140,7 @@ public interface PlayerExamineConfig extends Config
 	@ConfigItem(
 		keyName = "showGeValue",
 		name = "Show GE value",
+		position = 1,
 		section = ITEM_INFO_SECTION,
 		description = "Show the item grand exchange value in tooltips"
 	)
@@ -137,6 +152,7 @@ public interface PlayerExamineConfig extends Config
 	@ConfigItem(
 		keyName = "showHaValue",
 		name = "Show HA value",
+		position = 2,
 		section = ITEM_INFO_SECTION,
 		description = "Show the item high alchemy value in tooltips"
 	)
@@ -148,6 +164,7 @@ public interface PlayerExamineConfig extends Config
 	@ConfigItem(
 		keyName = "showEquipmentBonuses",
 		name = "Show equipment bonuses",
+		position = 3,
 		section = ITEM_INFO_SECTION,
 		description = "Show weapon and armor bonuses in item hover tooltips"
 	)
@@ -157,8 +174,45 @@ public interface PlayerExamineConfig extends Config
 	}
 
 	@ConfigItem(
+		keyName = "compareEquipmentBonuses",
+		name = "Compare equipped item bonuses",
+		position = 4,
+		section = ITEM_INFO_SECTION,
+		description = "Show a bonus delta column against your currently equipped item"
+	)
+	default boolean compareEquipmentBonuses()
+	{
+		return false;
+	}
+
+	@ConfigItem(
+		keyName = "listStyleLabelColor",
+		name = "Label text",
+		position = 0,
+		section = LIST_STYLE_COLORS_SECTION,
+		description = "Label text color for list and hybrid overlay rows"
+	)
+	default Color listStyleLabelColor()
+	{
+		return new Color(215, 125, 40);
+	}
+
+	@ConfigItem(
+		keyName = "listStyleValueColor",
+		name = "Value text",
+		position = 1,
+		section = LIST_STYLE_COLORS_SECTION,
+		description = "Value text color for list and hybrid overlay rows"
+	)
+	default Color listStyleValueColor()
+	{
+		return new Color(245, 240, 228);
+	}
+
+	@ConfigItem(
 		keyName = "tooltipItemTextColor",
 		name = "Item text",
+		position = 0,
 		section = TOOLTIP_COLORS_SECTION,
 		description = "Hovered item name and tooltip section header color"
 	)
@@ -170,6 +224,7 @@ public interface PlayerExamineConfig extends Config
 	@ConfigItem(
 		keyName = "tooltipOtherTextColor",
 		name = "Label text",
+		position = 1,
 		section = TOOLTIP_COLORS_SECTION,
 		description = "Tooltip labels and section headers color"
 	)
@@ -181,6 +236,7 @@ public interface PlayerExamineConfig extends Config
 	@ConfigItem(
 		keyName = "tooltipValueTextColor",
 		name = "Value text",
+		position = 2,
 		section = TOOLTIP_COLORS_SECTION,
 		description = "Tooltip numeric value color"
 	)
@@ -190,19 +246,9 @@ public interface PlayerExamineConfig extends Config
 	}
 
 	@ConfigItem(
-		keyName = "compareEquipmentBonuses",
-		name = "Compare equipped item bonuses",
-		section = ITEM_INFO_SECTION,
-		description = "Show a bonus delta column against your currently equipped item"
-	)
-	default boolean compareEquipmentBonuses()
-	{
-		return false;
-	}
-
-	@ConfigItem(
 		keyName = "tooltipPositiveBonusColor",
 		name = "+ bonus",
+		position = 3,
 		section = TOOLTIP_COLORS_SECTION,
 		description = "Tooltip color for positive bonus differences"
 	)
@@ -214,6 +260,7 @@ public interface PlayerExamineConfig extends Config
 	@ConfigItem(
 		keyName = "tooltipNegativeBonusColor",
 		name = "- bonus",
+		position = 4,
 		section = TOOLTIP_COLORS_SECTION,
 		description = "Tooltip color for negative bonus differences"
 	)
@@ -225,6 +272,7 @@ public interface PlayerExamineConfig extends Config
 	@ConfigItem(
 		keyName = "openWikiOnItemClick",
 		name = "Open wiki on item click",
+		position = 5,
 		section = ITEM_INFO_SECTION,
 		description = "Open the Old School RuneScape wiki page when clicking an item slot"
 	)
@@ -237,6 +285,7 @@ public interface PlayerExamineConfig extends Config
 	@ConfigItem(
 		keyName = "overlayBackgroundColor",
 		name = "Background",
+		position = 0,
 		section = OVERLAY_COLORS_SECTION,
 		description = "Overlay background color"
 	)
@@ -249,6 +298,7 @@ public interface PlayerExamineConfig extends Config
 	@ConfigItem(
 		keyName = "overlayBorderColor",
 		name = "Border",
+		position = 1,
 		section = OVERLAY_COLORS_SECTION,
 		description = "Overlay border color"
 	)
@@ -260,6 +310,7 @@ public interface PlayerExamineConfig extends Config
 	@ConfigItem(
 		keyName = "overlayHeaderTextColor",
 		name = "Username",
+		position = 2,
 		section = OVERLAY_COLORS_SECTION,
 		description = "Username text color"
 	)
@@ -271,6 +322,7 @@ public interface PlayerExamineConfig extends Config
 	@ConfigItem(
 		keyName = "overlaySubTextColor",
 		name = "Combat",
+		position = 3,
 		section = OVERLAY_COLORS_SECTION,
 		description = "Combat text color"
 	)
@@ -282,6 +334,7 @@ public interface PlayerExamineConfig extends Config
 	@ConfigItem(
 		keyName = "overlayCloseTextColor",
 		name = "X",
+		position = 4,
 		section = OVERLAY_COLORS_SECTION,
 		description = "X text color"
 	)
@@ -294,6 +347,7 @@ public interface PlayerExamineConfig extends Config
 	@ConfigItem(
 		keyName = "overlaySlotFillColor",
 		name = "Slot filled",
+		position = 5,
 		section = OVERLAY_COLORS_SECTION,
 		description = "Equipment slot fill color when an item is equipped"
 	)
@@ -306,6 +360,7 @@ public interface PlayerExamineConfig extends Config
 	@ConfigItem(
 		keyName = "overlaySlotEmptyColor",
 		name = "Slot empty",
+		position = 6,
 		section = OVERLAY_COLORS_SECTION,
 		description = "Equipment slot fill color when empty"
 	)
@@ -318,6 +373,7 @@ public interface PlayerExamineConfig extends Config
 	@ConfigItem(
 		keyName = "overlaySlotBorderColor",
 		name = "Slot border",
+		position = 7,
 		section = OVERLAY_COLORS_SECTION,
 		description = "Equipment slot border color"
 	)
@@ -329,6 +385,7 @@ public interface PlayerExamineConfig extends Config
 	@ConfigItem(
 		keyName = "overlaySlotHoverColor",
 		name = "Slot hover",
+		position = 8,
 		section = OVERLAY_COLORS_SECTION,
 		description = "Equipment slot hover color"
 	)
@@ -340,6 +397,7 @@ public interface PlayerExamineConfig extends Config
 	@ConfigItem(
 		keyName = "overlayCloseBorderColor",
 		name = "X border",
+		position = 9,
 		section = OVERLAY_COLORS_SECTION,
 		description = "X button border color"
 	)
@@ -351,6 +409,7 @@ public interface PlayerExamineConfig extends Config
 	@ConfigItem(
 		keyName = "overlayCloseColor",
 		name = "Close button",
+		position = 10,
 		section = OVERLAY_COLORS_SECTION,
 		description = "Close button background color"
 	)
@@ -362,6 +421,7 @@ public interface PlayerExamineConfig extends Config
 	@ConfigItem(
 		keyName = "overlayCloseHoverColor",
 		name = "Close hover",
+		position = 11,
 		section = OVERLAY_COLORS_SECTION,
 		description = "Close button hover color"
 	)
@@ -373,6 +433,7 @@ public interface PlayerExamineConfig extends Config
 	@ConfigItem(
 		keyName = "totalGeTextColor",
 		name = "GE total",
+		position = 12,
 		section = OVERLAY_COLORS_SECTION,
 		description = "GE total value text color"
 	)
@@ -384,6 +445,7 @@ public interface PlayerExamineConfig extends Config
 	@ConfigItem(
 		keyName = "totalHaTextColor",
 		name = "HA total",
+		position = 13,
 		section = OVERLAY_COLORS_SECTION,
 		description = "HA total value text color"
 	)
