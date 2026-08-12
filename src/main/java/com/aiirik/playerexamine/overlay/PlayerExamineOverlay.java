@@ -793,7 +793,11 @@ public class PlayerExamineOverlay extends Overlay
 			lines.add(formatTooltipLabel(cell.getSkill().getFullName()));
 		}
 
-		lines.add(formatTooltipStatLine("Rank", formatRank(cell.getRank()), null));
+		if (config.showSkillRank())
+		{
+			lines.add(formatTooltipStatLine("Rank", formatRank(cell.getRank()), null));
+		}
+
 		if (config.showSkillXp())
 		{
 			lines.add(formatTooltipStatLine("Experience", formatPrice(cell.getExperience()), null));

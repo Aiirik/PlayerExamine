@@ -31,4 +31,4 @@ Player Examine turns player examines into a compact, configurable overlay for ch
 
 ## Configuration
 
-![Configuration](images/playerexamineconfig.png)
+![Configuration](images/playerexamineconfigs.png)

@@ -362,9 +362,21 @@ public interface PlayerExamineConfig extends Config
 	}
 
 	@ConfigItem(
+		keyName = "showSkillRank",
+		name = "Show skill rank",
+		position = 1,
+		section = STATS_HOVER_TOOLTIP_SECTION,
+		description = "Show the hiscore rank in the stats hover tooltip"
+	)
+	default boolean showSkillRank()
+	{
+		return true;
+	}
+
+	@ConfigItem(
 		keyName = "showSkillXp",
 		name = "Show skill XP",
-		position = 1,
+		position = 2,
 		section = STATS_HOVER_TOOLTIP_SECTION,
 		description = "Show the skill experience in the stats hover tooltip"
 	)
@@ -376,7 +388,7 @@ public interface PlayerExamineConfig extends Config
 	@ConfigItem(
 		keyName = "showRemainingXp",
 		name = "Show remaining XP",
-		position = 2,
+		position = 3,
 		section = STATS_HOVER_TOOLTIP_SECTION,
 		description = "Show the XP remaining until the next level in the stats hover tooltip"
 	)
