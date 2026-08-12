@@ -14,6 +14,7 @@ public interface PlayerExamineConfig extends Config
 	String OVERLAY_SECTION = "overlay";
 	String OVERLAY_COLORS_SECTION = "overlayColors";
 	String ITEM_INFO_SECTION = "itemInfo";
+	String STATS_HOVER_TOOLTIP_SECTION = "statsHoverTooltip";
 	String LIST_STYLE_COLORS_SECTION = "listStyleColors";
 	String TOOLTIP_COLORS_SECTION = "tooltipColors";
 
@@ -39,6 +40,13 @@ public interface PlayerExamineConfig extends Config
 		Hybrid
 	}
 
+	enum StatsTabMode
+	{
+		Off,
+		Visual,
+		List
+	}
+
 	@ConfigSection(
 		name = "Overlay",
 		description = "Overlay display settings",
@@ -47,17 +55,25 @@ public interface PlayerExamineConfig extends Config
 	String overlaySection = OVERLAY_SECTION;
 
 	@ConfigSection(
-		name = "Item Info",
-		description = "Equipment hover and wiki settings",
+		name = "Item Hover Tooltip",
+		description = "Equipment hover tooltip and wiki settings",
 		position = 1,
 		closedByDefault = true
 	)
 	String itemInfoSection = ITEM_INFO_SECTION;
 
 	@ConfigSection(
-		name = "Visual Overlay Colors",
-		description = "Visual overlay color settings",
+		name = "Stats Hover Tooltip",
+		description = "Stats tab hover tooltip settings",
 		position = 2,
+		closedByDefault = true
+	)
+	String statsHoverTooltipSection = STATS_HOVER_TOOLTIP_SECTION;
+
+	@ConfigSection(
+		name = "Overlay Colors",
+		description = "Overlay color settings",
+		position = 3,
 		closedByDefault = true
 	)
 	String overlayColorsSection = OVERLAY_COLORS_SECTION;
@@ -65,7 +81,7 @@ public interface PlayerExamineConfig extends Config
 	@ConfigSection(
 		name = "List Style Colors",
 		description = "List and hybrid overlay color settings",
-		position = 3,
+		position = 4,
 		closedByDefault = true
 	)
 	String listStyleColorsSection = LIST_STYLE_COLORS_SECTION;
@@ -73,7 +89,7 @@ public interface PlayerExamineConfig extends Config
 	@ConfigSection(
 		name = "Tooltip Colors",
 		description = "Equipment tooltip color settings",
-		position = 4,
+		position = 5,
 		closedByDefault = true
 	)
 	String tooltipColorsSection = TOOLTIP_COLORS_SECTION;
@@ -81,7 +97,7 @@ public interface PlayerExamineConfig extends Config
 	@ConfigItem(
 		keyName = "disableUpdateNotifications",
 		name = "Disable update notifications",
-		position = 6,
+		position = 7,
 		section = OVERLAY_SECTION,
 		description = "Hide the chatbox message shown when Player Examine updates"
 	)
@@ -103,9 +119,21 @@ public interface PlayerExamineConfig extends Config
 	}
 
 	@ConfigItem(
+		keyName = "statsTabMode",
+		name = "Stats tab",
+		position = 2,
+		section = OVERLAY_SECTION,
+		description = "Choose whether to hide the stats tab or show it with icons or text"
+	)
+	default StatsTabMode statsTabMode()
+	{
+		return StatsTabMode.Visual;
+	}
+
+	@ConfigItem(
 		keyName = "overlayWidth",
 		name = "Overlay width",
-		position = 2,
+		position = 3,
 		section = OVERLAY_SECTION,
 		description = "Set the overlay width in pixels"
 	)
@@ -118,7 +146,7 @@ public interface PlayerExamineConfig extends Config
 	@ConfigItem(
 		keyName = "overlayTransparency",
 		name = "Overlay transparency",
-		position = 3,
+		position = 4,
 		section = OVERLAY_SECTION,
 		description = "Apply additional transparency to overlay backgrounds, borders, and slots"
 	)
@@ -131,7 +159,7 @@ public interface PlayerExamineConfig extends Config
 	@ConfigItem(
 		keyName = "overlayTextTransparency",
 		name = "Text transparency",
-		position = 4,
+		position = 5,
 		section = OVERLAY_SECTION,
 		description = "Apply additional transparency to overlay and tooltip text"
 	)
@@ -144,13 +172,13 @@ public interface PlayerExamineConfig extends Config
 	@ConfigItem(
 		keyName = "totalValueMode",
 		name = "Total value",
-		position = 5,
+		position = 6,
 		section = OVERLAY_SECTION,
 		description = "Show total equipment value in the overlay footer"
 	)
 	default TotalValueMode totalValueMode()
 	{
-		return TotalValueMode.None;
+		return TotalValueMode.Both;
 	}
 
 	@ConfigItem(
@@ -186,7 +214,7 @@ public interface PlayerExamineConfig extends Config
 	)
 	default boolean showGeValue()
 	{
-		return false;
+		return true;
 	}
 
 	@ConfigItem(
@@ -198,7 +226,7 @@ public interface PlayerExamineConfig extends Config
 	)
 	default boolean showHaValue()
 	{
-		return false;
+		return true;
 	}
 
 	@ConfigItem(
@@ -210,7 +238,7 @@ public interface PlayerExamineConfig extends Config
 	)
 	default boolean showEquipmentBonuses()
 	{
-		return false;
+		return true;
 	}
 
 	@ConfigItem(
@@ -222,7 +250,7 @@ public interface PlayerExamineConfig extends Config
 	)
 	default boolean compareEquipmentBonuses()
 	{
-		return false;
+		return true;
 	}
 
 	@ConfigItem(
@@ -318,7 +346,43 @@ public interface PlayerExamineConfig extends Config
 	)
 	default boolean openWikiOnItemClick()
 	{
-		return false;
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "showSkillName",
+		name = "Show skill name",
+		position = 0,
+		section = STATS_HOVER_TOOLTIP_SECTION,
+		description = "Show the full skill name at the top of the stats hover tooltip"
+	)
+	default boolean showSkillName()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "showSkillXp",
+		name = "Show skill XP",
+		position = 1,
+		section = STATS_HOVER_TOOLTIP_SECTION,
+		description = "Show the skill experience in the stats hover tooltip"
+	)
+	default boolean showSkillXp()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "showRemainingXp",
+		name = "Show remaining XP",
+		position = 2,
+		section = STATS_HOVER_TOOLTIP_SECTION,
+		description = "Show the XP remaining until the next level in the stats hover tooltip"
+	)
+	default boolean showRemainingXp()
+	{
+		return true;
 	}
 
 	@Alpha

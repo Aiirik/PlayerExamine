@@ -11,6 +11,7 @@
 - Adds a global overlay transparency control that stacks with per-color alpha settings.
 - Adds a separate text transparency control so labels and prices stay readable when the panel is faded.
 - Auto-expands list and hybrid overlays when item text would otherwise clip.
+- Adds an automatic hiscore stats tab with combat and skill levels for examined players.
 
 ## 1.0.0 - 1 Aug 2026
 

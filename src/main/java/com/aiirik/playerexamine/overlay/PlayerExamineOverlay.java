@@ -4,6 +4,7 @@ import com.aiirik.playerexamine.PlayerExamineConfig;
 import com.aiirik.playerexamine.PlayerExaminePlugin;
 import com.aiirik.playerexamine.model.PlayerExamineData;
 import com.aiirik.playerexamine.model.PlayerExamineData.EquipmentEntry;
+import com.aiirik.playerexamine.model.PlayerHiscoreData;
 import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Dimension;
@@ -11,6 +12,7 @@ import java.awt.FontMetrics;
 import java.awt.Graphics2D;
 import java.awt.Rectangle;
 import java.awt.RenderingHints;
+import java.awt.image.BufferedImage;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -19,6 +21,7 @@ import java.util.List;
 import java.util.Map;
 import javax.inject.Inject;
 import net.runelite.api.Client;
+import net.runelite.api.Experience;
 import net.runelite.api.Item;
 import net.runelite.api.ItemContainer;
 import net.runelite.api.Point;
@@ -26,6 +29,7 @@ import net.runelite.api.gameval.InventoryID;
 import net.runelite.client.game.ItemEquipmentStats;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.game.ItemStats;
+import net.runelite.client.game.SkillIconManager;
 import net.runelite.client.ui.FontManager;
 import net.runelite.client.ui.overlay.Overlay;
 import net.runelite.client.ui.overlay.OverlayLayer;
@@ -41,11 +45,16 @@ public class PlayerExamineOverlay extends Overlay
 	private static final int BASE_FRAME_WIDTH = 188;
 	private static final int BASE_FRAME_HEIGHT = 248;
 	private static final int TITLE_BAR_HEIGHT = 18;
+	private static final int TAB_BAR_Y = 21;
+	private static final int TAB_BAR_HEIGHT = 15;
+	private static final int TAB_SIDE_PADDING = 8;
+	private static final int CONTENT_TOP_WITH_TABS = 43;
+	private static final int CONTENT_TOP_NO_TABS = 25;
 	private static final int SLOT_SIZE = 34;
 	private static final int SLOT_GAP_X = 12;
 	private static final int SLOT_GAP_Y = 6;
 	private static final int GRID_START_X = 31;
-	private static final int GRID_START_Y = 28;
+	private static final int GRID_START_Y = 43;
 	private static final int SLOT_INSET_X = 4;
 	private static final int SLOT_INSET_Y = 3;
 	private static final int FOOTER_BOTTOM_MARGIN = 5;
@@ -53,11 +62,18 @@ public class PlayerExamineOverlay extends Overlay
 	private static final int FOOTER_LINE_GAP = 1;
 	private static final int FOOTER_SIDE_PADDING = 12;
 	private static final int SLOT_GRID_BOTTOM = GRID_START_Y + (4 * (SLOT_SIZE + SLOT_GAP_Y)) + SLOT_SIZE;
-	private static final int LIST_START_Y = 30;
+	private static final int LIST_START_Y = 43;
 	private static final int LIST_SIDE_PADDING = 8;
 	private static final int LIST_ICON_SIZE = 16;
 	private static final int LIST_ICON_GAP = 4;
 	private static final int LIST_ROW_PADDING_Y = 2;
+	private static final int STATS_SIDE_PADDING = 8;
+	private static final int STATS_COLUMN_GAP = 8;
+	private static final int STATS_ROW_GAP = 5;
+	private static final int STATS_ICON_SIZE = 18;
+	private static final int STATS_ICON_GAP = 4;
+	private static final int STATS_OVERALL_GAP = 12;
+	private static final int STATS_COLUMNS = 3;
 	private static final int HYBRID_ICON_SIZE = 20;
 	private static final int HYBRID_ICON_GAP = 6;
 	private static final int HYBRID_ROW_PADDING_Y = 4;
@@ -65,8 +81,16 @@ public class PlayerExamineOverlay extends Overlay
 	private final PlayerExamineConfig config;
 	private final Client client;
 	private final ItemManager itemManager;
+	private final SkillIconManager skillIconManager;
 	private final TooltipManager tooltipManager;
 	private volatile RenderState renderState = RenderState.empty();
+	private volatile OverlayTab selectedTab = OverlayTab.EQUIPMENT;
+
+	public enum OverlayTab
+	{
+		EQUIPMENT,
+		STATS
+	}
 
 	@Inject
 	public PlayerExamineOverlay(
@@ -74,12 +98,14 @@ public class PlayerExamineOverlay extends Overlay
 		PlayerExamineConfig config,
 		Client client,
 		ItemManager itemManager,
+		SkillIconManager skillIconManager,
 		TooltipManager tooltipManager)
 	{
 		this.plugin = plugin;
 		this.config = config;
 		this.client = client;
 		this.itemManager = itemManager;
+		this.skillIconManager = skillIconManager;
 		this.tooltipManager = tooltipManager;
 
 		setPriority(OverlayPriority.HIGH);
@@ -103,22 +129,52 @@ public class PlayerExamineOverlay extends Overlay
 		graphics.setFont(FontManager.getRunescapeSmallFont());
 
 		PlayerExamineConfig.OverlayMode overlayMode = config.overlayMode();
+		PlayerExamineConfig.StatsTabMode statsTabMode = config.statsTabMode();
+		boolean showStatsTab = statsTabMode != PlayerExamineConfig.StatsTabMode.Off;
+		boolean showStatsIcons = statsTabMode == PlayerExamineConfig.StatsTabMode.Visual;
+		if (!showStatsTab && selectedTab == OverlayTab.STATS)
+		{
+			selectedTab = OverlayTab.EQUIPMENT;
+		}
+
 		int frameWidth = config.overlayWidth();
+		PlayerHiscoreData hiscoreData = plugin.getCurrentHiscoreData();
 		if (overlayMode == PlayerExamineConfig.OverlayMode.List || overlayMode == PlayerExamineConfig.OverlayMode.Hybrid)
 		{
 			frameWidth = Math.max(frameWidth, calculateListFrameWidth(graphics, data, overlayMode == PlayerExamineConfig.OverlayMode.Hybrid, frameWidth));
 		}
+		if (showStatsTab && (selectedTab == OverlayTab.STATS || hiscoreData != null))
+		{
+			frameWidth = Math.max(frameWidth, calculateStatsFrameWidth(graphics, hiscoreData, frameWidth, showStatsIcons));
+		}
 
-		ContentLayout contentLayout = buildContentLayout(graphics, data, overlayMode, frameWidth);
+		int contentTop = showStatsTab ? CONTENT_TOP_WITH_TABS : CONTENT_TOP_NO_TABS;
+		ContentLayout contentLayout = buildContentLayout(graphics, data, overlayMode, frameWidth, contentTop);
 		FooterLayout footerLayout = buildFooterLayout(graphics, data, contentLayout.getContentBottom(), frameWidth);
-		int frameHeight = Math.max(contentLayout.getFrameHeight(), footerLayout.getFrameHeight());
+		TabLayout tabLayout = showStatsTab ? buildTabLayout(frameWidth) : null;
+		StatsLayout statsLayout = showStatsTab ? buildStatsLayout(graphics, hiscoreData, frameWidth, showStatsIcons, contentTop) : StatsLayout.empty(contentTop);
+		boolean statsSelected = selectedTab == OverlayTab.STATS;
+		int frameHeight = statsSelected
+			? Math.max(statsLayout.getFrameHeight(), BASE_FRAME_HEIGHT)
+			: Math.max(contentLayout.getFrameHeight(), footerLayout.getFrameHeight());
 		Rectangle closeButton = new Rectangle(frameWidth - 20, 2, 16, 14);
 
 		drawFrame(graphics, data, closeButton, frameHeight, frameWidth);
-		drawContent(graphics, contentLayout, frameWidth);
-		drawFooter(graphics, footerLayout, frameWidth);
+		if (showStatsTab)
+		{
+			drawTabs(graphics, tabLayout, frameWidth);
+		}
+		if (statsSelected)
+		{
+			drawStats(graphics, statsLayout, frameWidth, hiscoreData);
+		}
+		else
+		{
+			drawContent(graphics, contentLayout, frameWidth);
+			drawFooter(graphics, footerLayout, frameWidth);
+		}
 
-		renderState = new RenderState(closeButton, contentLayout.getSlots(), contentLayout.getRows(), overlayMode, new Dimension(frameWidth, frameHeight));
+		renderState = new RenderState(closeButton, contentLayout.getSlots(), contentLayout.getRows(), statsLayout.getCells(), overlayMode, tabLayout, selectedTab, new Dimension(frameWidth, frameHeight));
 		addHoverTooltip();
 		return renderState.getDimension();
 	}
@@ -126,6 +182,22 @@ public class PlayerExamineOverlay extends Overlay
 	public RenderState getRenderState()
 	{
 		return renderState;
+	}
+
+	public void setSelectedTab(OverlayTab tab)
+	{
+		if (config.statsTabMode() == PlayerExamineConfig.StatsTabMode.Off && tab == OverlayTab.STATS)
+		{
+			selectedTab = OverlayTab.EQUIPMENT;
+			return;
+		}
+
+		selectedTab = tab == null ? OverlayTab.EQUIPMENT : tab;
+	}
+
+	public OverlayTab getSelectedTab()
+	{
+		return selectedTab;
 	}
 
 	private void drawFrame(Graphics2D graphics, PlayerExamineData data, Rectangle closeButton, int frameHeight, int frameWidth)
@@ -173,7 +245,34 @@ public class PlayerExamineOverlay extends Overlay
 		drawCenteredOpaqueShadowText(graphics, "X", closeButton, config.xTextColor());
 	}
 
-	private ContentLayout buildContentLayout(Graphics2D graphics, PlayerExamineData data, PlayerExamineConfig.OverlayMode overlayMode, int frameWidth)
+	private TabLayout buildTabLayout(int frameWidth)
+	{
+		int innerWidth = frameWidth - (TAB_SIDE_PADDING * 2) - 2;
+		int tabWidth = innerWidth / 2;
+		Rectangle equipmentTab = new Rectangle(TAB_SIDE_PADDING, TAB_BAR_Y, tabWidth, TAB_BAR_HEIGHT);
+		Rectangle statsTab = new Rectangle(TAB_SIDE_PADDING + tabWidth + 2, TAB_BAR_Y, innerWidth - tabWidth, TAB_BAR_HEIGHT);
+		return new TabLayout(equipmentTab, statsTab);
+	}
+
+	private void drawTabs(Graphics2D graphics, TabLayout tabLayout, int frameWidth)
+	{
+		Rectangle equipmentTab = tabLayout.getEquipmentTab();
+		Rectangle statsTab = tabLayout.getStatsTab();
+		drawTabButton(graphics, equipmentTab, selectedTab == OverlayTab.EQUIPMENT, "Equipment");
+		drawTabButton(graphics, statsTab, selectedTab == OverlayTab.STATS, "Stats");
+	}
+
+	private void drawTabButton(Graphics2D graphics, Rectangle bounds, boolean selected, String text)
+	{
+		graphics.setColor(applyOverlayTransparency(selected ? config.overlaySlotFillColor() : config.overlaySlotEmptyColor()));
+		graphics.fillRect(bounds.x, bounds.y, bounds.width, bounds.height);
+		graphics.setColor(applyOverlayTransparency(selected ? config.overlaySlotHoverColor() : config.overlaySlotBorderColor()));
+		graphics.drawRect(bounds.x, bounds.y, bounds.width, bounds.height);
+		Rectangle textBounds = new Rectangle(bounds.x, bounds.y + 2, bounds.width, Math.max(0, bounds.height - 2));
+		drawCenteredShadowText(graphics, text, textBounds, selected ? config.tooltipItemTextColor() : config.combatTextColor());
+	}
+
+	private ContentLayout buildContentLayout(Graphics2D graphics, PlayerExamineData data, PlayerExamineConfig.OverlayMode overlayMode, int frameWidth, int contentTop)
 	{
 		Map<String, EquipmentEntry> entries = new HashMap<>();
 		for (EquipmentEntry entry : data.getEquipment())
@@ -181,7 +280,7 @@ public class PlayerExamineOverlay extends Overlay
 			entries.put(entry.getSlotName().toLowerCase(), entry);
 		}
 
-		Rectangle[] slotBoxes = buildSlotBoxes(frameWidth);
+		Rectangle[] slotBoxes = buildSlotBoxes(frameWidth, contentTop);
 		List<SlotState> slots = new ArrayList<>();
 		slots.add(createSlot("helmet", slotBoxes[0], entries.get("head"), true, true));
 		slots.add(createSlot("cape", slotBoxes[1], entries.get("cape"), true, true));
@@ -197,10 +296,134 @@ public class PlayerExamineOverlay extends Overlay
 
 		if (overlayMode == PlayerExamineConfig.OverlayMode.List || overlayMode == PlayerExamineConfig.OverlayMode.Hybrid)
 		{
-			return buildListContent(graphics, data, slots, overlayMode == PlayerExamineConfig.OverlayMode.Hybrid, frameWidth);
+			return buildListContent(graphics, data, slots, overlayMode == PlayerExamineConfig.OverlayMode.Hybrid, frameWidth, contentTop);
 		}
 
-		return ContentLayout.forSlots(slots);
+		return ContentLayout.forSlots(slots, contentTop);
+	}
+
+	private int calculateStatsFrameWidth(Graphics2D graphics, PlayerHiscoreData hiscoreData, int minimumWidth, boolean showIcons)
+	{
+		if (hiscoreData == null)
+		{
+			FontMetrics metrics = graphics.getFontMetrics();
+			int loadingWidth = Math.max(
+				metrics.stringWidth("Looking up hiscores..."),
+				metrics.stringWidth("Hiscores unavailable"));
+			return Math.max(minimumWidth, loadingWidth + (STATS_SIDE_PADDING * 2));
+		}
+
+		FontMetrics metrics = graphics.getFontMetrics();
+		PlayerHiscoreData.Skill[] skills = PlayerHiscoreData.displaySkills();
+		int widestCell = 0;
+		for (PlayerHiscoreData.Skill skill : skills)
+		{
+			widestCell = Math.max(widestCell, measureStatCellWidth(metrics, skill, hiscoreData.getLevel(skill), showIcons));
+		}
+
+		int totalLevelWidth = metrics.stringWidth("Total level: " + formatNumber(hiscoreData.getLevel(PlayerHiscoreData.Skill.OVERALL)));
+		int gridWidth = (widestCell * STATS_COLUMNS) + (STATS_COLUMN_GAP * (STATS_COLUMNS - 1)) + (STATS_SIDE_PADDING * 2);
+		int totalWidth = totalLevelWidth + (STATS_SIDE_PADDING * 2);
+		return Math.max(minimumWidth, Math.max(gridWidth, totalWidth));
+	}
+
+	private StatsLayout buildStatsLayout(Graphics2D graphics, PlayerHiscoreData hiscoreData, int frameWidth, boolean showIcons, int contentTop)
+	{
+		FontMetrics metrics = graphics.getFontMetrics();
+		int loadingHeight = contentTop + metrics.getHeight() + 12;
+		if (hiscoreData == null)
+		{
+			String message = plugin.getHiscoreLookupState() == PlayerExaminePlugin.HiscoreLookupState.LOADING
+				? "Looking up hiscores..."
+				: "Hiscores unavailable";
+			return new StatsLayout(loadingHeight, contentTop, showIcons, plugin.getHiscoreLookupState() == PlayerExaminePlugin.HiscoreLookupState.LOADING, plugin.getHiscoreLookupState() == PlayerExaminePlugin.HiscoreLookupState.UNAVAILABLE, new ArrayList<>(), message, contentTop, metrics.getHeight());
+		}
+
+		PlayerHiscoreData.Skill[] skills = PlayerHiscoreData.displaySkills();
+		int rowsPerColumn = (skills.length + STATS_COLUMNS - 1) / STATS_COLUMNS;
+		int rowHeight = Math.max(metrics.getHeight(), showIcons ? STATS_ICON_SIZE : 0) + STATS_ROW_GAP + 2;
+		int gridCellWidth = (frameWidth - (STATS_SIDE_PADDING * 2) - (STATS_COLUMN_GAP * (STATS_COLUMNS - 1))) / STATS_COLUMNS;
+		List<StatCell> cells = new ArrayList<>();
+		for (int i = 0; i < skills.length; i++)
+		{
+			PlayerHiscoreData.Skill skill = skills[i];
+			int row = i / STATS_COLUMNS;
+			int column = i % STATS_COLUMNS;
+			int x = STATS_SIDE_PADDING + (column * (gridCellWidth + STATS_COLUMN_GAP));
+			int y = contentTop + (row * rowHeight);
+			cells.add(new StatCell(skill, hiscoreData.getRank(skill), hiscoreData.getLevel(skill), hiscoreData.getExperience(skill), new Rectangle(x, y, gridCellWidth, rowHeight)));
+		}
+
+		int gridBottom = contentTop + (rowsPerColumn * rowHeight);
+		int totalLevelY = gridBottom + STATS_OVERALL_GAP;
+		String totalLevelText = "Total level: " + formatNumber(hiscoreData.getLevel(PlayerHiscoreData.Skill.OVERALL));
+		int frameHeight = Math.max(BASE_FRAME_HEIGHT, totalLevelY + metrics.getHeight() + 14);
+		return new StatsLayout(frameHeight, contentTop, showIcons, false, false, cells, totalLevelText, totalLevelY, metrics.getHeight());
+	}
+
+	private void drawStats(Graphics2D graphics, StatsLayout layout, int frameWidth, PlayerHiscoreData hiscoreData)
+	{
+		FontMetrics metrics = graphics.getFontMetrics();
+		int topY = layout.getContentTop();
+		if (layout.isLoading() || layout.isUnavailable() || hiscoreData == null)
+		{
+			String message = layout.isLoading() ? "Looking up hiscores..." : "Hiscores unavailable";
+			drawCenteredShadowText(graphics, message, new Rectangle(0, topY, frameWidth, metrics.getHeight()), config.combatTextColor());
+			return;
+		}
+
+		for (StatCell cell : layout.getCells())
+		{
+			drawStatCell(graphics, cell, layout.isShowIcons());
+		}
+
+		drawCenteredShadowText(graphics, layout.getTotalLevelText(), new Rectangle(0, layout.getTotalLevelY(), frameWidth, metrics.getHeight()), config.tooltipItemTextColor());
+	}
+
+	private void drawStatCell(Graphics2D graphics, StatCell cell, boolean showIcons)
+	{
+		FontMetrics metrics = graphics.getFontMetrics();
+		Rectangle bounds = cell.getBounds();
+		String value = formatNumber(cell.getLevel());
+		int valueWidth = metrics.stringWidth(value);
+		if (showIcons)
+		{
+			int iconWidth = STATS_ICON_SIZE;
+			int groupWidth = iconWidth + STATS_ICON_GAP + valueWidth;
+			int groupX = bounds.x + Math.max((bounds.width - groupWidth) / 2, 0);
+			int groupHeight = Math.max(metrics.getHeight(), STATS_ICON_SIZE);
+			int groupY = bounds.y + Math.max((bounds.height - groupHeight) / 2, 0);
+			BufferedImage icon = skillIconManager.getSkillImage(cell.getSkill().getApiSkill(), true);
+			if (icon != null)
+			{
+				int iconY = groupY + ((groupHeight - STATS_ICON_SIZE) / 2);
+				graphics.drawImage(icon, groupX, iconY, STATS_ICON_SIZE, STATS_ICON_SIZE, null);
+			}
+
+			int valueX = groupX + STATS_ICON_SIZE + STATS_ICON_GAP;
+			int valueBaseline = groupY + ((groupHeight - metrics.getHeight()) / 2) + metrics.getAscent();
+			drawShadowText(graphics, value, valueX, valueBaseline, config.tooltipValueTextColor());
+			return;
+		}
+
+		int baseline = bounds.y + metrics.getAscent();
+		String label = cell.getSkill().getLabel() + ": ";
+		int labelWidth = metrics.stringWidth(label);
+		int availableValueWidth = Math.max(0, bounds.width - labelWidth);
+		String fittedValue = fitText(graphics, value, availableValueWidth);
+		drawShadowText(graphics, label, bounds.x, baseline, config.tooltipOtherTextColor());
+		drawShadowText(graphics, fittedValue, bounds.x + labelWidth, baseline, config.tooltipValueTextColor());
+	}
+
+	private int measureStatCellWidth(FontMetrics metrics, PlayerHiscoreData.Skill skill, int level, boolean showIcons)
+	{
+		String value = formatNumber(level);
+		if (showIcons)
+		{
+			return STATS_ICON_SIZE + STATS_ICON_GAP + metrics.stringWidth(value);
+		}
+
+		return metrics.stringWidth(skill.getLabel() + ": ") + metrics.stringWidth(value);
 	}
 
 	private int calculateListFrameWidth(Graphics2D graphics, PlayerExamineData data, boolean showIcons, int minimumWidth)
@@ -260,11 +483,11 @@ public class PlayerExamineOverlay extends Overlay
 		return new SlotState(key, bounds, entry, drawFrame, showEmptyTooltip);
 	}
 
-	private ContentLayout buildListContent(Graphics2D graphics, PlayerExamineData data, List<SlotState> slots, boolean showIcons, int frameWidth)
+	private ContentLayout buildListContent(Graphics2D graphics, PlayerExamineData data, List<SlotState> slots, boolean showIcons, int frameWidth, int contentTop)
 	{
 		FontMetrics metrics = graphics.getFontMetrics();
 		List<ListRow> rows = new ArrayList<>();
-		int currentY = LIST_START_Y;
+		int currentY = contentTop;
 		int rowHeight = showIcons
 			? Math.max((metrics.getHeight() * 2), HYBRID_ICON_SIZE) + HYBRID_ROW_PADDING_Y
 			: Math.max(metrics.getHeight(), LIST_ICON_SIZE) + LIST_ROW_PADDING_Y;
@@ -302,7 +525,7 @@ public class PlayerExamineOverlay extends Overlay
 			currentY += rowHeight + 1;
 		}
 
-		return ContentLayout.forRows(slots, rows, rows.isEmpty() ? LIST_START_Y : currentY - 1);
+		return ContentLayout.forRows(slots, rows, rows.isEmpty() ? contentTop : currentY - 1);
 	}
 
 	private String buildSlotValue(SlotState slot)
@@ -456,23 +679,23 @@ public class PlayerExamineOverlay extends Overlay
 		}
 	}
 
-	private Rectangle[] buildSlotBoxes(int frameWidth)
+	private Rectangle[] buildSlotBoxes(int frameWidth, int contentTop)
 	{
 		int gridWidth = (3 * SLOT_SIZE) + (2 * SLOT_GAP_X);
 		int gridStartX = Math.max((frameWidth - gridWidth) / 2, 0);
 
 		return new Rectangle[] {
-			new Rectangle(gridStartX + SLOT_SIZE + SLOT_GAP_X, GRID_START_Y, SLOT_SIZE, SLOT_SIZE),
-			new Rectangle(gridStartX, GRID_START_Y + SLOT_SIZE + SLOT_GAP_Y, SLOT_SIZE, SLOT_SIZE),
-			new Rectangle(gridStartX + SLOT_SIZE + SLOT_GAP_X, GRID_START_Y + SLOT_SIZE + SLOT_GAP_Y, SLOT_SIZE, SLOT_SIZE),
-			new Rectangle(gridStartX + 2 * (SLOT_SIZE + SLOT_GAP_X), GRID_START_Y + SLOT_SIZE + SLOT_GAP_Y, SLOT_SIZE, SLOT_SIZE),
-			new Rectangle(gridStartX, GRID_START_Y + 2 * (SLOT_SIZE + SLOT_GAP_Y), SLOT_SIZE, SLOT_SIZE),
-			new Rectangle(gridStartX + SLOT_SIZE + SLOT_GAP_X, GRID_START_Y + 2 * (SLOT_SIZE + SLOT_GAP_Y), SLOT_SIZE, SLOT_SIZE),
-			new Rectangle(gridStartX + 2 * (SLOT_SIZE + SLOT_GAP_X), GRID_START_Y + 2 * (SLOT_SIZE + SLOT_GAP_Y), SLOT_SIZE, SLOT_SIZE),
-			new Rectangle(gridStartX + SLOT_SIZE + SLOT_GAP_X, GRID_START_Y + 3 * (SLOT_SIZE + SLOT_GAP_Y), SLOT_SIZE, SLOT_SIZE),
-			new Rectangle(gridStartX, GRID_START_Y + 4 * (SLOT_SIZE + SLOT_GAP_Y), SLOT_SIZE, SLOT_SIZE),
-			new Rectangle(gridStartX + SLOT_SIZE + SLOT_GAP_X, GRID_START_Y + 4 * (SLOT_SIZE + SLOT_GAP_Y), SLOT_SIZE, SLOT_SIZE),
-			new Rectangle(gridStartX + 2 * (SLOT_SIZE + SLOT_GAP_X), GRID_START_Y + 4 * (SLOT_SIZE + SLOT_GAP_Y), SLOT_SIZE, SLOT_SIZE)
+			new Rectangle(gridStartX + SLOT_SIZE + SLOT_GAP_X, contentTop, SLOT_SIZE, SLOT_SIZE),
+			new Rectangle(gridStartX, contentTop + SLOT_SIZE + SLOT_GAP_Y, SLOT_SIZE, SLOT_SIZE),
+			new Rectangle(gridStartX + SLOT_SIZE + SLOT_GAP_X, contentTop + SLOT_SIZE + SLOT_GAP_Y, SLOT_SIZE, SLOT_SIZE),
+			new Rectangle(gridStartX + 2 * (SLOT_SIZE + SLOT_GAP_X), contentTop + SLOT_SIZE + SLOT_GAP_Y, SLOT_SIZE, SLOT_SIZE),
+			new Rectangle(gridStartX, contentTop + 2 * (SLOT_SIZE + SLOT_GAP_Y), SLOT_SIZE, SLOT_SIZE),
+			new Rectangle(gridStartX + SLOT_SIZE + SLOT_GAP_X, contentTop + 2 * (SLOT_SIZE + SLOT_GAP_Y), SLOT_SIZE, SLOT_SIZE),
+			new Rectangle(gridStartX + 2 * (SLOT_SIZE + SLOT_GAP_X), contentTop + 2 * (SLOT_SIZE + SLOT_GAP_Y), SLOT_SIZE, SLOT_SIZE),
+			new Rectangle(gridStartX + SLOT_SIZE + SLOT_GAP_X, contentTop + 3 * (SLOT_SIZE + SLOT_GAP_Y), SLOT_SIZE, SLOT_SIZE),
+			new Rectangle(gridStartX, contentTop + 4 * (SLOT_SIZE + SLOT_GAP_Y), SLOT_SIZE, SLOT_SIZE),
+			new Rectangle(gridStartX + SLOT_SIZE + SLOT_GAP_X, contentTop + 4 * (SLOT_SIZE + SLOT_GAP_Y), SLOT_SIZE, SLOT_SIZE),
+			new Rectangle(gridStartX + 2 * (SLOT_SIZE + SLOT_GAP_X), contentTop + 4 * (SLOT_SIZE + SLOT_GAP_Y), SLOT_SIZE, SLOT_SIZE)
 		};
 	}
 
@@ -481,6 +704,29 @@ public class PlayerExamineOverlay extends Overlay
 		RenderState state = renderState;
 		if (state == null || state.isEmpty())
 		{
+			return;
+		}
+
+		if (state.getSelectedTab() == OverlayTab.STATS)
+		{
+			Point mouse = client.getMouseCanvasPosition();
+			Rectangle bounds = getBounds();
+			if (mouse == null || bounds == null || !bounds.contains(mouse.getX(), mouse.getY()))
+			{
+				return;
+			}
+
+			int localX = mouse.getX() - bounds.x;
+			int localY = mouse.getY() - bounds.y;
+			StatCell statCell = state.getStatAt(localX, localY);
+			if (statCell != null)
+			{
+				String tooltip = buildStatsTooltip(statCell);
+				if (tooltip != null && !tooltip.isEmpty())
+				{
+					tooltipManager.add(new Tooltip(tooltip));
+				}
+			}
 			return;
 		}
 
@@ -537,6 +783,53 @@ public class PlayerExamineOverlay extends Overlay
 				return;
 			}
 		}
+	}
+
+	private String buildStatsTooltip(StatCell cell)
+	{
+		List<String> lines = new ArrayList<>();
+		if (config.showSkillName())
+		{
+			lines.add(formatTooltipLabel(cell.getSkill().getFullName()));
+		}
+
+		lines.add(formatTooltipStatLine("Rank", formatRank(cell.getRank()), null));
+		if (config.showSkillXp())
+		{
+			lines.add(formatTooltipStatLine("Experience", formatPrice(cell.getExperience()), null));
+		}
+
+		if (cell.getSkill() != PlayerHiscoreData.Skill.OVERALL)
+		{
+			if (config.showRemainingXp())
+			{
+				lines.add(formatTooltipStatLine("Remaining XP", formatPrice(getRemainingXp(cell.getLevel(), cell.getExperience())), null));
+			}
+		}
+
+		if (lines.isEmpty())
+		{
+			return null;
+		}
+
+		return String.join("<br>", lines);
+	}
+
+	private static String formatRank(int rank)
+	{
+		return rank > 0 ? "#" + formatPrice(rank) : "Unranked";
+	}
+
+	private long getRemainingXp(int level, long experience)
+	{
+		if (level >= 99)
+		{
+			return 0L;
+		}
+
+		int nextLevel = Math.min(level + 1, 126);
+		long xpForNextLevel = Experience.getXpForLevel(nextLevel);
+		return Math.max(xpForNextLevel - experience, 0L);
 	}
 
 	private void addItemTooltips(EquipmentEntry entry)
@@ -1038,9 +1331,11 @@ public class PlayerExamineOverlay extends Overlay
 			this.contentBottom = contentBottom;
 		}
 
-		static ContentLayout forSlots(List<SlotState> slots)
+		static ContentLayout forSlots(List<SlotState> slots, int contentTop)
 		{
-			return new ContentLayout(slots, new ArrayList<>(), false, BASE_FRAME_HEIGHT, SLOT_GRID_BOTTOM);
+			int contentBottom = contentTop + (4 * (SLOT_SIZE + SLOT_GAP_Y)) + SLOT_SIZE;
+			int frameHeight = Math.max(BASE_FRAME_HEIGHT, contentBottom + FOOTER_BOTTOM_MARGIN);
+			return new ContentLayout(slots, new ArrayList<>(), false, frameHeight, contentBottom);
 		}
 
 		static ContentLayout forRows(List<SlotState> slots, List<ListRow> rows, int contentBottom)
@@ -1071,6 +1366,160 @@ public class PlayerExamineOverlay extends Overlay
 		int getFrameHeight()
 		{
 			return frameHeight;
+		}
+	}
+
+	private static final class TabLayout
+	{
+		private final Rectangle equipmentTab;
+		private final Rectangle statsTab;
+
+		private TabLayout(Rectangle equipmentTab, Rectangle statsTab)
+		{
+			this.equipmentTab = equipmentTab;
+			this.statsTab = statsTab;
+		}
+
+		Rectangle getEquipmentTab()
+		{
+			return equipmentTab;
+		}
+
+		Rectangle getStatsTab()
+		{
+			return statsTab;
+		}
+
+		OverlayTab getTabAt(int localX, int localY)
+		{
+			if (equipmentTab.contains(localX, localY))
+			{
+				return OverlayTab.EQUIPMENT;
+			}
+			if (statsTab.contains(localX, localY))
+			{
+				return OverlayTab.STATS;
+			}
+			return null;
+		}
+	}
+
+	private static final class StatsLayout
+	{
+		private final int frameHeight;
+		private final int contentTop;
+		private final boolean showIcons;
+		private final boolean loading;
+		private final boolean unavailable;
+		private final List<StatCell> cells;
+		private final String totalLevelText;
+		private final int totalLevelY;
+		private final int totalLevelHeight;
+
+		private StatsLayout(int frameHeight, int contentTop, boolean showIcons, boolean loading, boolean unavailable, List<StatCell> cells, String totalLevelText, int totalLevelY, int totalLevelHeight)
+		{
+			this.frameHeight = frameHeight;
+			this.contentTop = contentTop;
+			this.showIcons = showIcons;
+			this.loading = loading;
+			this.unavailable = unavailable;
+			this.cells = cells;
+			this.totalLevelText = totalLevelText;
+			this.totalLevelY = totalLevelY;
+			this.totalLevelHeight = totalLevelHeight;
+		}
+
+		static StatsLayout empty(int contentTop)
+		{
+			return new StatsLayout(BASE_FRAME_HEIGHT, contentTop, false, false, false, new ArrayList<>(), "", contentTop, 0);
+		}
+
+		int getFrameHeight()
+		{
+			return frameHeight;
+		}
+
+		boolean isLoading()
+		{
+			return loading;
+		}
+
+		boolean isUnavailable()
+		{
+			return unavailable;
+		}
+
+		int getContentTop()
+		{
+			return contentTop;
+		}
+
+		boolean isShowIcons()
+		{
+			return showIcons;
+		}
+
+		List<StatCell> getCells()
+		{
+			return cells;
+		}
+
+		String getTotalLevelText()
+		{
+			return totalLevelText;
+		}
+
+		int getTotalLevelY()
+		{
+			return totalLevelY;
+		}
+
+		int getTotalLevelHeight()
+		{
+			return totalLevelHeight;
+		}
+	}
+
+	private static final class StatCell
+	{
+		private final PlayerHiscoreData.Skill skill;
+		private final int rank;
+		private final int level;
+		private final long experience;
+		private final Rectangle bounds;
+
+		private StatCell(PlayerHiscoreData.Skill skill, int rank, int level, long experience, Rectangle bounds)
+		{
+			this.skill = skill;
+			this.rank = rank;
+			this.level = level;
+			this.experience = experience;
+			this.bounds = bounds;
+		}
+
+		PlayerHiscoreData.Skill getSkill()
+		{
+			return skill;
+		}
+
+		int getLevel()
+		{
+			return level;
+		}
+
+		int getRank()
+		{
+			return rank;
+		}
+
+		long getExperience()
+		{
+			return experience;
+		}
+
+		Rectangle getBounds()
+		{
+			return bounds;
 		}
 	}
 
@@ -1224,21 +1673,27 @@ public class PlayerExamineOverlay extends Overlay
 		private final Rectangle closeButton;
 		private final List<SlotState> slots;
 		private final List<ListRow> rows;
+		private final List<StatCell> statsCells;
 		private final PlayerExamineConfig.OverlayMode overlayMode;
+		private final TabLayout tabLayout;
+		private final OverlayTab selectedTab;
 		private final Dimension dimension;
 
-		private RenderState(Rectangle closeButton, List<SlotState> slots, List<ListRow> rows, PlayerExamineConfig.OverlayMode overlayMode, Dimension dimension)
+		private RenderState(Rectangle closeButton, List<SlotState> slots, List<ListRow> rows, List<StatCell> statsCells, PlayerExamineConfig.OverlayMode overlayMode, TabLayout tabLayout, OverlayTab selectedTab, Dimension dimension)
 		{
 			this.closeButton = closeButton;
 			this.slots = slots;
 			this.rows = rows;
+			this.statsCells = statsCells;
 			this.overlayMode = overlayMode;
+			this.tabLayout = tabLayout;
+			this.selectedTab = selectedTab;
 			this.dimension = dimension;
 		}
 
 		public static RenderState empty()
 		{
-			return new RenderState(new Rectangle(), new ArrayList<>(), new ArrayList<>(), PlayerExamineConfig.OverlayMode.Item, new Dimension(0, 0));
+			return new RenderState(new Rectangle(), new ArrayList<>(), new ArrayList<>(), new ArrayList<>(), PlayerExamineConfig.OverlayMode.Item, new TabLayout(new Rectangle(), new Rectangle()), OverlayTab.EQUIPMENT, new Dimension(0, 0));
 		}
 
 		public boolean isEmpty()
@@ -1261,6 +1716,21 @@ public class PlayerExamineOverlay extends Overlay
 			return rows;
 		}
 
+		public List<StatCell> getStatsCells()
+		{
+			return statsCells;
+		}
+
+		public OverlayTab getSelectedTab()
+		{
+			return selectedTab;
+		}
+
+		public OverlayTab getTabAt(int localX, int localY)
+		{
+			return tabLayout != null ? tabLayout.getTabAt(localX, localY) : null;
+		}
+
 		public boolean isListMode()
 		{
 			return overlayMode == PlayerExamineConfig.OverlayMode.List || overlayMode == PlayerExamineConfig.OverlayMode.Hybrid;
@@ -1273,6 +1743,18 @@ public class PlayerExamineOverlay extends Overlay
 				if (slot.getBounds().contains(localX, localY))
 				{
 					return slot;
+				}
+			}
+			return null;
+		}
+
+		public StatCell getStatAt(int localX, int localY)
+		{
+			for (StatCell statCell : statsCells)
+			{
+				if (statCell.getBounds().contains(localX, localY))
+				{
+					return statCell;
 				}
 			}
 			return null;

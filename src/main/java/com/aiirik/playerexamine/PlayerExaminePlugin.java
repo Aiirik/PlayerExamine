@@ -1,13 +1,27 @@
 package com.aiirik.playerexamine;
 
 import com.aiirik.playerexamine.model.PlayerExamineData;
+import com.aiirik.playerexamine.model.PlayerHiscoreData;
 import com.aiirik.playerexamine.overlay.PlayerExamineOverlay;
 import com.google.inject.Provides;
 import java.awt.event.MouseEvent;
+import java.io.IOException;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 import javax.inject.Inject;
 import javax.inject.Provider;
+import okhttp3.Call;
+import okhttp3.Callback;
+import okhttp3.HttpUrl;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
 import net.runelite.api.Point;
@@ -16,6 +30,7 @@ import net.runelite.api.MenuAction;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.MenuOptionClicked;
 import net.runelite.client.chat.ChatMessageManager;
+import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.input.MouseAdapter;
@@ -35,6 +50,13 @@ public class PlayerExaminePlugin extends Plugin
 {
 	private static final Logger log = LoggerFactory.getLogger(PlayerExaminePlugin.class);
 	private static final String EXAMINE_OPTION = "Examine";
+	private static final Duration HISCORE_CACHE_TTL = Duration.ofMinutes(10);
+	private static final String[] HISCORE_BASES = {
+		"https://secure.runescape.com/m=hiscore_oldschool/index_lite.ws",
+		"https://secure.runescape.com/m=hiscore_oldschool_ironman/index_lite.ws",
+		"https://secure.runescape.com/m=hiscore_oldschool_hardcore_ironman/index_lite.ws",
+		"https://secure.runescape.com/m=hiscore_oldschool_ultimate_ironman/index_lite.ws"
+	};
 
 	@Inject
 	private Client client;
@@ -60,7 +82,18 @@ public class PlayerExaminePlugin extends Plugin
 	@Inject
 	private MouseManager mouseManager;
 
+	@Inject
+	private ClientThread clientThread;
+
+	@Inject
+	private OkHttpClient okHttpClient;
+
 	private volatile PlayerExamineData currentData;
+	private volatile PlayerHiscoreData currentHiscoreData;
+	private volatile HiscoreLookupState hiscoreLookupState = HiscoreLookupState.IDLE;
+	private volatile String currentHiscoreName;
+	private final AtomicLong hiscoreLookupRequestId = new AtomicLong();
+	private final Map<String, CachedHiscoreData> hiscoreCache = new ConcurrentHashMap<>();
 	private final MouseAdapter mouseAdapter = new MouseAdapter()
 	{
 		@Override
@@ -88,6 +121,7 @@ public class PlayerExaminePlugin extends Plugin
 		overlayManager.add(overlay);
 		menuManager.get().addPlayerMenuItem(EXAMINE_OPTION);
 		mouseManager.registerMouseListener(mouseAdapter);
+		overlay.setSelectedTab(PlayerExamineOverlay.OverlayTab.EQUIPMENT);
 		log.debug("Player Examine started");
 	}
 
@@ -138,6 +172,7 @@ public class PlayerExaminePlugin extends Plugin
 
 		PlayerExamineData data = PlayerExamineData.from(examinedPlayer, client);
 		setCurrentData(data);
+		startHiscoreLookup(data.getName());
 	}
 
 	@Provides
@@ -156,14 +191,181 @@ public class PlayerExaminePlugin extends Plugin
 		return config;
 	}
 
+	public PlayerHiscoreData getCurrentHiscoreData()
+	{
+		return currentHiscoreData;
+	}
+
+	public HiscoreLookupState getHiscoreLookupState()
+	{
+		return hiscoreLookupState;
+	}
+
 	private void setCurrentData(PlayerExamineData data)
 	{
+		hiscoreLookupRequestId.incrementAndGet();
 		currentData = data;
+		currentHiscoreData = null;
+		hiscoreLookupState = data == null ? HiscoreLookupState.IDLE : HiscoreLookupState.LOADING;
+		currentHiscoreName = data != null ? normalizeName(data.getName()) : null;
+		overlay.setSelectedTab(PlayerExamineOverlay.OverlayTab.EQUIPMENT);
 	}
 
 	private void clearCurrentData()
 	{
 		setCurrentData(null);
+		currentHiscoreName = null;
+	}
+
+	private void startHiscoreLookup(String name)
+	{
+		String normalizedName = normalizeName(name);
+		currentHiscoreName = normalizedName;
+
+		CachedHiscoreData cached = hiscoreCache.get(normalizedName);
+		if (cached != null && !cached.isExpired())
+		{
+			currentHiscoreData = cached.getData();
+			hiscoreLookupState = HiscoreLookupState.READY;
+			return;
+		}
+
+		currentHiscoreData = null;
+		hiscoreLookupState = HiscoreLookupState.LOADING;
+		long requestId = hiscoreLookupRequestId.incrementAndGet();
+		lookupHiscoreEndpoint(normalizedName, requestId, 0);
+	}
+
+	private void lookupHiscoreEndpoint(String normalizedName, long requestId, int endpointIndex)
+	{
+		if (requestId != hiscoreLookupRequestId.get())
+		{
+			return;
+		}
+
+		if (endpointIndex >= HISCORE_BASES.length)
+		{
+			clientThread.invoke(() ->
+			{
+				if (requestId == hiscoreLookupRequestId.get() && normalizedName.equals(currentHiscoreName))
+				{
+					hiscoreLookupState = HiscoreLookupState.UNAVAILABLE;
+				}
+			});
+			return;
+		}
+
+		HttpUrl url = HttpUrl.parse(HISCORE_BASES[endpointIndex]).newBuilder()
+			.addQueryParameter("player", normalizedName)
+			.build();
+		Request request = new Request.Builder()
+			.url(url)
+			.get()
+			.build();
+
+		okHttpClient.newCall(request).enqueue(new Callback()
+		{
+			@Override
+			public void onFailure(Call call, IOException e)
+			{
+				lookupHiscoreEndpoint(normalizedName, requestId, endpointIndex + 1);
+			}
+
+			@Override
+			public void onResponse(Call call, Response response) throws IOException
+			{
+				try (Response ignored = response)
+				{
+					if (!response.isSuccessful() || response.body() == null)
+					{
+						lookupHiscoreEndpoint(normalizedName, requestId, endpointIndex + 1);
+						return;
+					}
+
+					String body = response.body().string().trim();
+					PlayerHiscoreData parsed = parseHiscoreBody(HISCORE_BASES[endpointIndex], body);
+					if (parsed == null)
+					{
+						lookupHiscoreEndpoint(normalizedName, requestId, endpointIndex + 1);
+						return;
+					}
+
+					clientThread.invoke(() ->
+					{
+						if (requestId != hiscoreLookupRequestId.get() || !normalizedName.equals(currentHiscoreName))
+						{
+							return;
+						}
+
+						currentHiscoreData = parsed;
+						hiscoreLookupState = HiscoreLookupState.READY;
+						hiscoreCache.put(normalizedName, new CachedHiscoreData(parsed));
+					});
+				}
+			}
+		});
+	}
+
+	private PlayerHiscoreData parseHiscoreBody(String source, String body)
+	{
+		if (body == null || body.isEmpty())
+		{
+			return null;
+		}
+
+		String[] lines = body.split("\\R");
+		if (lines.length < PlayerHiscoreData.skillCount())
+		{
+			return null;
+		}
+
+		int[] ranks = new int[PlayerHiscoreData.skillCount()];
+		int[] levels = new int[PlayerHiscoreData.skillCount()];
+		long[] experiences = new long[PlayerHiscoreData.skillCount()];
+		for (int i = 0; i < levels.length; i++)
+		{
+			String line = lines[i].trim();
+			String[] fields = line.split(",");
+			if (fields.length < 3)
+			{
+				return null;
+			}
+
+			ranks[i] = parseInt(fields[0]);
+			levels[i] = parseInt(fields[1]);
+			experiences[i] = parseLong(fields[2]);
+		}
+
+		return PlayerHiscoreData.fromParsedValues(source, ranks, levels, experiences);
+	}
+
+	private static int parseInt(String text)
+	{
+		try
+		{
+			return Integer.parseInt(text.trim());
+		}
+		catch (NumberFormatException ex)
+		{
+			return 0;
+		}
+	}
+
+	private static long parseLong(String text)
+	{
+		try
+		{
+			return Long.parseLong(text.trim());
+		}
+		catch (NumberFormatException ex)
+		{
+			return 0L;
+		}
+	}
+
+	private static String normalizeName(String name)
+	{
+		return name == null ? "" : name.trim().replaceAll("\\s+", " ").toLowerCase(Locale.ROOT);
 	}
 
 	private MouseEvent handleOverlayMouseEvent(MouseEvent mouseEvent)
@@ -189,16 +391,25 @@ public class PlayerExaminePlugin extends Plugin
 		int localX = mouseEvent.getX() - overlayBounds.x;
 		int localY = mouseEvent.getY() - overlayBounds.y;
 
-		if (renderState.getCloseButton().contains(localX, localY))
+		PlayerExamineOverlay.RenderState overlayState = overlay.getRenderState();
+		PlayerExamineOverlay.OverlayTab tab = overlayState.getTabAt(localX, localY);
+		if (tab != null)
+		{
+			mouseEvent.consume();
+			overlay.setSelectedTab(tab);
+			return mouseEvent;
+		}
+
+		if (overlayState.getCloseButton().contains(localX, localY))
 		{
 			mouseEvent.consume();
 			clearCurrentData();
 			return mouseEvent;
 		}
 
-		if (config.openWikiOnItemClick())
+		if (config.openWikiOnItemClick() && overlayState.getSelectedTab() == PlayerExamineOverlay.OverlayTab.EQUIPMENT)
 		{
-			PlayerExamineOverlay.SlotState slot = renderState.getSlotAt(localX, localY);
+			PlayerExamineOverlay.SlotState slot = overlayState.getSlotAt(localX, localY);
 			if (slot != null && slot.getEntry() != null && slot.getEntry().hasItem())
 			{
 				mouseEvent.consume();
@@ -244,5 +455,35 @@ public class PlayerExaminePlugin extends Plugin
 			stripped = stripped.substring(0, levelSeparator).trim();
 		}
 		return stripped;
+	}
+
+	public enum HiscoreLookupState
+	{
+		IDLE,
+		LOADING,
+		READY,
+		UNAVAILABLE
+	}
+
+	private static final class CachedHiscoreData
+	{
+		private final PlayerHiscoreData data;
+		private final Instant fetchedAt;
+
+		private CachedHiscoreData(PlayerHiscoreData data)
+		{
+			this.data = data;
+			this.fetchedAt = Instant.now();
+		}
+
+		private PlayerHiscoreData getData()
+		{
+			return data;
+		}
+
+		private boolean isExpired()
+		{
+			return Instant.now().isAfter(fetchedAt.plus(HISCORE_CACHE_TTL));
+		}
 	}
 }
