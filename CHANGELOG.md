@@ -1,30 +1,24 @@
 # Changelog
 
-## Unreleased
+## 1.0.0 - 11 Aug 2026
 
-### Features
-
-- Adds an optional hover comparison view for equipment bonuses against your currently equipped item.
-- Splits tooltip styling into separate configurable colors for item text, label text, value text, and bonus deltas.
-- Colors hovered item names and bonus section headers to match the RuneLite-style tooltip presentation.
-- Adds a configurable overlay width so the visual layout can be made more compact.
-- Adds a global overlay transparency control that stacks with per-color alpha settings.
-- Adds a separate text transparency control so labels and prices stay readable when the panel is faded.
-- Auto-expands list and hybrid overlays when item text would otherwise clip.
-- Adds an automatic hiscore stats tab with combat and skill levels for examined players.
-
-## 1.0.0 - 1 Aug 2026
-
-Initial release of Player Examine.
+Initial release of Player Examine, including:
 
 ### Features
 
 - Adds a right-click `Examine` option for players.
 - Opens a movable RuneLite overlay after examining a player.
-- Renders a RuneScape-style equipment layout for the examined player.
+- Renders `Visual`, `List`, and `Hybrid` equipment layouts.
+- Supports an optional stats tab with visual or list-style display.
 - Shows hover tooltips for equipped items.
+- Supports GE, HA, and total value display.
+- Supports item bonus comparison against your currently equipped item.
 - Supports item wiki search on slot click.
-- Supports GE and HA tooltip values.
-- Lets you hide the `(Members)` suffix in item names.
-- Includes configurable overlay colors.
+- Supports separate hover tooltip controls for item text, labels, values, and bonus deltas.
+- Shows stats hover tooltips with skill name, rank, experience, and remaining XP.
+- Uses a hiscore-backed stats tab with OSRS skill ordering.
+- Supports configurable overlay width, transparency, and text colors.
+- Auto-expands list and hybrid overlays when item text would otherwise clip.
+- Lets you add the `(Members)` suffix in item names.
+- Includes configurable overlay colors, list-style colors, tooltip colors, and stats hover tooltip settings.
 - Includes update notices for new plugin versions.
