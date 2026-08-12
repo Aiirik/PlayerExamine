@@ -104,6 +104,11 @@ public class PlayerExamineOverlay extends Overlay
 
 		PlayerExamineConfig.OverlayMode overlayMode = config.overlayMode();
 		int frameWidth = config.overlayWidth();
+		if (overlayMode == PlayerExamineConfig.OverlayMode.List || overlayMode == PlayerExamineConfig.OverlayMode.Hybrid)
+		{
+			frameWidth = Math.max(frameWidth, calculateListFrameWidth(graphics, data, overlayMode == PlayerExamineConfig.OverlayMode.Hybrid, frameWidth));
+		}
+
 		ContentLayout contentLayout = buildContentLayout(graphics, data, overlayMode, frameWidth);
 		FooterLayout footerLayout = buildFooterLayout(graphics, data, contentLayout.getContentBottom(), frameWidth);
 		int frameHeight = Math.max(contentLayout.getFrameHeight(), footerLayout.getFrameHeight());
@@ -125,35 +130,47 @@ public class PlayerExamineOverlay extends Overlay
 
 	private void drawFrame(Graphics2D graphics, PlayerExamineData data, Rectangle closeButton, int frameHeight, int frameWidth)
 	{
-		graphics.setColor(config.overlayBorderColor());
+		graphics.setColor(applyOverlayTransparency(config.overlayBorderColor()));
 		graphics.drawRect(0, 0, frameWidth - 1, frameHeight - 1);
 
 		Color backgroundColor = config.overlayBackgroundColor();
 		if (backgroundColor.getAlpha() > 0)
 		{
-			graphics.setColor(backgroundColor);
+			graphics.setColor(applyOverlayTransparency(backgroundColor));
 			graphics.fillRect(1, 1, frameWidth - 2, frameHeight - 2);
 		}
 
-		graphics.setColor(config.overlayBorderColor());
+		graphics.setColor(applyOverlayTransparency(config.overlayBorderColor()));
 		graphics.setStroke(new BasicStroke(1f));
 		graphics.drawLine(2, TITLE_BAR_HEIGHT - 1, frameWidth - 3, TITLE_BAR_HEIGHT - 1);
 
 		FontMetrics metrics = graphics.getFontMetrics();
 		int titleBaseline = ((TITLE_BAR_HEIGHT - metrics.getHeight()) / 2) + metrics.getAscent() + 1;
 
-		String title = fitText(graphics, data.getName(), Math.max(0, frameWidth - 114));
-		drawShadowText(graphics, title, 8, titleBaseline, config.usernameTextColor());
+		String combat = "Lvl: " + data.getCombatLevel();
+		int combatWidth = metrics.stringWidth(combat);
+		int combatX = Math.max(8, frameWidth - combatWidth - 24);
 
-		String combat = "Combat " + data.getCombatLevel();
-		drawShadowText(graphics, combat, Math.max(8, frameWidth - 92), titleBaseline, config.combatTextColor());
+		String title = fitText(graphics, data.getName(), Math.max(0, combatX - 16));
+		drawShadowText(graphics, title, 8, titleBaseline, config.usernameTextColor());
+		drawShadowText(graphics, combat, combatX, titleBaseline, config.combatTextColor());
 
 		boolean hoverClose = isMouseInside(closeButton);
-		graphics.setColor(hoverClose ? config.overlayCloseHoverColor() : config.overlayCloseColor());
+		Color closeFill = hoverClose ? config.overlayCloseHoverColor() : config.overlayCloseColor();
+		if (config.overlayTransparency() > 0)
+		{
+			closeFill = applyOverlayTransparency(closeFill);
+		}
+		graphics.setColor(closeFill);
 		graphics.fillRect(closeButton.x, closeButton.y, closeButton.width, closeButton.height);
-		graphics.setColor(config.xBorderColor());
+		Color closeBorder = config.xBorderColor();
+		if (config.overlayTransparency() > 0)
+		{
+			closeBorder = applyOverlayTransparency(closeBorder, 0.75f);
+		}
+		graphics.setColor(closeBorder);
 		graphics.drawRect(closeButton.x, closeButton.y, closeButton.width, closeButton.height);
-		drawCenteredShadowText(graphics, "X", closeButton, config.xTextColor());
+		drawCenteredOpaqueShadowText(graphics, "X", closeButton, config.xTextColor());
 	}
 
 	private ContentLayout buildContentLayout(Graphics2D graphics, PlayerExamineData data, PlayerExamineConfig.OverlayMode overlayMode, int frameWidth)
@@ -184,6 +201,58 @@ public class PlayerExamineOverlay extends Overlay
 		}
 
 		return ContentLayout.forSlots(slots);
+	}
+
+	private int calculateListFrameWidth(Graphics2D graphics, PlayerExamineData data, boolean showIcons, int minimumWidth)
+	{
+		FontMetrics metrics = graphics.getFontMetrics();
+		Map<String, EquipmentEntry> entries = new HashMap<>();
+		for (EquipmentEntry entry : data.getEquipment())
+		{
+			entries.put(entry.getSlotName().toLowerCase(), entry);
+		}
+
+		int frameWidth = minimumWidth;
+		frameWidth = Math.max(frameWidth, measureListRowWidth(metrics, "helmet", entries.get("head"), true, showIcons));
+		frameWidth = Math.max(frameWidth, measureListRowWidth(metrics, "cape", entries.get("cape"), true, showIcons));
+		frameWidth = Math.max(frameWidth, measureListRowWidth(metrics, "necklace", entries.get("amulet"), true, showIcons));
+		frameWidth = Math.max(frameWidth, measureListRowWidth(metrics, "arrows", null, false, showIcons));
+		frameWidth = Math.max(frameWidth, measureListRowWidth(metrics, "weapon", entries.get("weapon"), true, showIcons));
+		frameWidth = Math.max(frameWidth, measureListRowWidth(metrics, "body", entries.get("torso"), true, showIcons));
+		frameWidth = Math.max(frameWidth, measureListRowWidth(metrics, "offhand", entries.get("shield"), true, showIcons));
+		frameWidth = Math.max(frameWidth, measureListRowWidth(metrics, "legs", entries.get("legs"), true, showIcons));
+		frameWidth = Math.max(frameWidth, measureListRowWidth(metrics, "gloves", entries.get("hands"), true, showIcons));
+		frameWidth = Math.max(frameWidth, measureListRowWidth(metrics, "boots", entries.get("boots"), true, showIcons));
+		frameWidth = Math.max(frameWidth, measureListRowWidth(metrics, "ring", null, false, showIcons));
+		return frameWidth;
+	}
+
+	private int measureListRowWidth(FontMetrics metrics, String key, EquipmentEntry entry, boolean showEmptyTooltip, boolean showIcons)
+	{
+		boolean hasItem = entry != null && entry.hasItem();
+		boolean visibleSlot = hasItem || showEmptyTooltip;
+		if (config.hideNotVisibleSlots() && !visibleSlot)
+		{
+			return 0;
+		}
+
+		String label = formatSlotLabel(key);
+		String value = entry != null && entry.hasItem()
+			? getDisplayItemName(entry)
+			: (showEmptyTooltip ? "None" : "Not visible");
+
+		int textWidth;
+		if (showIcons)
+		{
+			textWidth = Math.max(metrics.stringWidth(label), metrics.stringWidth(value));
+			textWidth += HYBRID_ICON_SIZE + HYBRID_ICON_GAP;
+		}
+		else
+		{
+			textWidth = metrics.stringWidth(label) + metrics.stringWidth(": ") + metrics.stringWidth(value);
+		}
+
+		return (LIST_SIDE_PADDING * 2) + textWidth;
 	}
 
 	private SlotState createSlot(String key, Rectangle bounds, EquipmentEntry entry, boolean drawFrame, boolean showEmptyTooltip)
@@ -365,13 +434,13 @@ public class PlayerExamineOverlay extends Overlay
 
 		if (slot.isDrawFrame())
 		{
-			graphics.setColor(hover ? config.overlaySlotHoverColor() : config.overlaySlotBorderColor());
+			graphics.setColor(applyOverlayTransparency(hover ? config.overlaySlotHoverColor() : config.overlaySlotBorderColor()));
 			graphics.drawRect(bounds.x - 1, bounds.y - 1, bounds.width + 1, bounds.height + 1);
 
 			Color fillColor = hasItem ? config.overlaySlotFillColor() : config.overlaySlotEmptyColor();
 			if (fillColor.getAlpha() > 0)
 			{
-				graphics.setColor(fillColor);
+				graphics.setColor(applyOverlayTransparency(fillColor));
 				graphics.fillRect(bounds.x, bounds.y, bounds.width, bounds.height);
 			}
 		}
@@ -664,19 +733,19 @@ public class PlayerExamineOverlay extends Overlay
 			color = delta > 0 ? config.tooltipPositiveBonusColor() : config.tooltipNegativeBonusColor();
 		}
 
-		return ColorUtil.wrapWithColorTag("(" + formatted + ")", color);
+		return ColorUtil.wrapWithColorTag("(" + formatted + ")", applyTextTransparency(color));
 	}
 
 	private String formatTooltipLabel(String text)
 	{
-		return ColorUtil.wrapWithColorTag(text, config.tooltipItemTextColor());
+		return ColorUtil.wrapWithColorTag(text, applyTextTransparency(config.tooltipItemTextColor()));
 	}
 
 	private String formatTooltipStatLine(String label, String value, String delta)
 	{
 		StringBuilder builder = new StringBuilder();
-		builder.append(ColorUtil.wrapWithColorTag(label + ": ", config.tooltipOtherTextColor()));
-		builder.append(ColorUtil.wrapWithColorTag(value, config.tooltipValueTextColor()));
+		builder.append(ColorUtil.wrapWithColorTag(label + ": ", applyTextTransparency(config.tooltipOtherTextColor())));
+		builder.append(ColorUtil.wrapWithColorTag(value, applyTextTransparency(config.tooltipValueTextColor())));
 		if (delta != null)
 		{
 			builder.append("  ").append(delta);
@@ -1058,20 +1127,72 @@ public class PlayerExamineOverlay extends Overlay
 			&& rectangle.contains(mouse.getX() - bounds.x, mouse.getY() - bounds.y);
 	}
 
-	private static void drawShadowText(Graphics2D graphics, String text, int x, int y, Color color)
+	private void drawShadowText(Graphics2D graphics, String text, int x, int y, Color color)
 	{
+		graphics.setColor(applyTextTransparency(new Color(16, 12, 8)));
+		graphics.drawString(text, x + 1, y + 1);
+		graphics.setColor(applyTextTransparency(color));
+		graphics.drawString(text, x, y);
+	}
+
+	private void drawCenteredShadowText(Graphics2D graphics, String text, Rectangle bounds, Color color)
+	{
+		FontMetrics metrics = graphics.getFontMetrics();
+		int x = bounds.x + (bounds.width - metrics.stringWidth(text)) / 2;
+		int y = bounds.y + ((bounds.height - metrics.getHeight()) / 2) + metrics.getAscent();
+		drawShadowText(graphics, text, x, y, color);
+	}
+
+	private static void drawCenteredOpaqueShadowText(Graphics2D graphics, String text, Rectangle bounds, Color color)
+	{
+		FontMetrics metrics = graphics.getFontMetrics();
+		int x = bounds.x + (bounds.width - metrics.stringWidth(text)) / 2;
+		int y = bounds.y + ((bounds.height - metrics.getHeight()) / 2) + metrics.getAscent();
 		graphics.setColor(new Color(16, 12, 8));
 		graphics.drawString(text, x + 1, y + 1);
 		graphics.setColor(color);
 		graphics.drawString(text, x, y);
 	}
 
-	private static void drawCenteredShadowText(Graphics2D graphics, String text, Rectangle bounds, Color color)
+	private Color applyOverlayTransparency(Color color)
 	{
-		FontMetrics metrics = graphics.getFontMetrics();
-		int x = bounds.x + (bounds.width - metrics.stringWidth(text)) / 2;
-		int y = bounds.y + ((bounds.height - metrics.getHeight()) / 2) + metrics.getAscent();
-		drawShadowText(graphics, text, x, y, color);
+		return applyOverlayTransparency(color, 1.0f);
+	}
+
+	private Color applyOverlayTransparency(Color color, float transparencyScale)
+	{
+		if (color == null)
+		{
+			return null;
+		}
+
+		int extraTransparency = Math.round(config.overlayTransparency() * transparencyScale);
+		if (extraTransparency <= 0)
+		{
+			return color;
+		}
+
+		int alpha = color.getAlpha();
+		int adjustedAlpha = (alpha * Math.max(0, 100 - extraTransparency)) / 100;
+		return new Color(color.getRed(), color.getGreen(), color.getBlue(), adjustedAlpha);
+	}
+
+	private Color applyTextTransparency(Color color)
+	{
+		if (color == null)
+		{
+			return null;
+		}
+
+		int extraTransparency = config.overlayTextTransparency();
+		if (extraTransparency <= 0)
+		{
+			return color;
+		}
+
+		int alpha = color.getAlpha();
+		int adjustedAlpha = (alpha * Math.max(0, 100 - extraTransparency)) / 100;
+		return new Color(color.getRed(), color.getGreen(), color.getBlue(), adjustedAlpha);
 	}
 
 	private String fitText(Graphics2D graphics, String text, int maxWidth)

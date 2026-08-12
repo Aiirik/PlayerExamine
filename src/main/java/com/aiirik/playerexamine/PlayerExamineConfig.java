@@ -81,7 +81,7 @@ public interface PlayerExamineConfig extends Config
 	@ConfigItem(
 		keyName = "disableUpdateNotifications",
 		name = "Disable update notifications",
-		position = 4,
+		position = 6,
 		section = OVERLAY_SECTION,
 		description = "Hide the chatbox message shown when Player Examine updates"
 	)
@@ -112,13 +112,39 @@ public interface PlayerExamineConfig extends Config
 	@Range(min = 160, max = 220)
 	default int overlayWidth()
 	{
-		return 188;
+		return 160;
+	}
+
+	@ConfigItem(
+		keyName = "overlayTransparency",
+		name = "Overlay transparency",
+		position = 3,
+		section = OVERLAY_SECTION,
+		description = "Apply additional transparency to overlay backgrounds, borders, and slots"
+	)
+	@Range(min = 0, max = 100)
+	default int overlayTransparency()
+	{
+		return 0;
+	}
+
+	@ConfigItem(
+		keyName = "overlayTextTransparency",
+		name = "Text transparency",
+		position = 4,
+		section = OVERLAY_SECTION,
+		description = "Apply additional transparency to overlay and tooltip text"
+	)
+	@Range(min = 0, max = 100)
+	default int overlayTextTransparency()
+	{
+		return 0;
 	}
 
 	@ConfigItem(
 		keyName = "totalValueMode",
 		name = "Total value",
-		position = 3,
+		position = 5,
 		section = OVERLAY_SECTION,
 		description = "Show total equipment value in the overlay footer"
 	)
@@ -347,10 +373,10 @@ public interface PlayerExamineConfig extends Config
 
 	@ConfigItem(
 		keyName = "overlayCloseTextColor",
-		name = "X",
-		position = 4,
+		name = "X close button",
+		position = 10,
 		section = OVERLAY_COLORS_SECTION,
-		description = "X text color"
+		description = "Text color for the close button X"
 	)
 	default Color xTextColor()
 	{
@@ -359,9 +385,47 @@ public interface PlayerExamineConfig extends Config
 
 	@Alpha
 	@ConfigItem(
+		keyName = "overlayCloseBorderColor",
+		name = "Close border",
+		position = 11,
+		section = OVERLAY_COLORS_SECTION,
+		description = "Border color for the close button"
+	)
+	default Color xBorderColor()
+	{
+		return new Color(53, 42, 28);
+	}
+
+	@Alpha
+	@ConfigItem(
+		keyName = "overlayCloseColor",
+		name = "Close button",
+		position = 12,
+		section = OVERLAY_COLORS_SECTION,
+		description = "Background color for the close button"
+	)
+	default Color overlayCloseColor()
+	{
+		return new Color(44, 31, 22);
+	}
+
+	@ConfigItem(
+		keyName = "overlayCloseHoverColor",
+		name = "Close hover",
+		position = 13,
+		section = OVERLAY_COLORS_SECTION,
+		description = "Hover background color for the close button"
+	)
+	default Color overlayCloseHoverColor()
+	{
+		return new Color(94, 30, 26);
+	}
+
+	@Alpha
+	@ConfigItem(
 		keyName = "overlaySlotFillColor",
 		name = "Slot filled",
-		position = 5,
+		position = 4,
 		section = OVERLAY_COLORS_SECTION,
 		description = "Equipment slot fill color when an item is equipped"
 	)
@@ -374,7 +438,7 @@ public interface PlayerExamineConfig extends Config
 	@ConfigItem(
 		keyName = "overlaySlotEmptyColor",
 		name = "Slot empty",
-		position = 6,
+		position = 5,
 		section = OVERLAY_COLORS_SECTION,
 		description = "Equipment slot fill color when empty"
 	)
@@ -387,7 +451,7 @@ public interface PlayerExamineConfig extends Config
 	@ConfigItem(
 		keyName = "overlaySlotBorderColor",
 		name = "Slot border",
-		position = 7,
+		position = 6,
 		section = OVERLAY_COLORS_SECTION,
 		description = "Equipment slot border color"
 	)
@@ -399,7 +463,7 @@ public interface PlayerExamineConfig extends Config
 	@ConfigItem(
 		keyName = "overlaySlotHoverColor",
 		name = "Slot hover",
-		position = 8,
+		position = 7,
 		section = OVERLAY_COLORS_SECTION,
 		description = "Equipment slot hover color"
 	)
@@ -409,45 +473,9 @@ public interface PlayerExamineConfig extends Config
 	}
 
 	@ConfigItem(
-		keyName = "overlayCloseBorderColor",
-		name = "X border",
-		position = 9,
-		section = OVERLAY_COLORS_SECTION,
-		description = "X button border color"
-	)
-	default Color xBorderColor()
-	{
-		return new Color(53, 42, 28);
-	}
-
-	@ConfigItem(
-		keyName = "overlayCloseColor",
-		name = "Close button",
-		position = 10,
-		section = OVERLAY_COLORS_SECTION,
-		description = "Close button background color"
-	)
-	default Color overlayCloseColor()
-	{
-		return new Color(44, 31, 22);
-	}
-
-	@ConfigItem(
-		keyName = "overlayCloseHoverColor",
-		name = "Close hover",
-		position = 11,
-		section = OVERLAY_COLORS_SECTION,
-		description = "Close button hover color"
-	)
-	default Color overlayCloseHoverColor()
-	{
-		return new Color(94, 30, 26);
-	}
-
-	@ConfigItem(
 		keyName = "totalGeTextColor",
 		name = "GE total",
-		position = 12,
+		position = 8,
 		section = OVERLAY_COLORS_SECTION,
 		description = "GE total value text color"
 	)
@@ -459,7 +487,7 @@ public interface PlayerExamineConfig extends Config
 	@ConfigItem(
 		keyName = "totalHaTextColor",
 		name = "HA total",
-		position = 13,
+		position = 9,
 		section = OVERLAY_COLORS_SECTION,
 		description = "HA total value text color"
 	)

@@ -8,6 +8,9 @@
 - Splits tooltip styling into separate configurable colors for item text, label text, value text, and bonus deltas.
 - Colors hovered item names and bonus section headers to match the RuneLite-style tooltip presentation.
 - Adds a configurable overlay width so the visual layout can be made more compact.
+- Adds a global overlay transparency control that stacks with per-color alpha settings.
+- Adds a separate text transparency control so labels and prices stay readable when the panel is faded.
+- Auto-expands list and hybrid overlays when item text would otherwise clip.
 
 ## 1.0.0 - 1 Aug 2026
 
