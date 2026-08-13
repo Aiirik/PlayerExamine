@@ -72,7 +72,7 @@ public class PlayerExamineOverlay extends Overlay
 	private static final int STATS_ROW_GAP = 5;
 	private static final int STATS_ICON_SIZE = 18;
 	private static final int STATS_ICON_GAP = 4;
-	private static final int STATS_OVERALL_GAP = 12;
+	private static final int STATS_OVERALL_GAP = 10;
 	private static final int STATS_COLUMNS = 3;
 	private static final int HYBRID_ICON_SIZE = 20;
 	private static final int HYBRID_ICON_GAP = 6;
@@ -154,6 +154,14 @@ public class PlayerExamineOverlay extends Overlay
 		TabLayout tabLayout = showStatsTab ? buildTabLayout(frameWidth) : null;
 		StatsLayout statsLayout = showStatsTab ? buildStatsLayout(graphics, hiscoreData, frameWidth, showStatsIcons, contentTop) : StatsLayout.empty(contentTop);
 		boolean statsSelected = selectedTab == OverlayTab.STATS;
+		if (showStatsTab && !statsSelected)
+		{
+			int footerDelta = statsLayout.getFrameHeight() - footerLayout.getFrameHeight();
+			if (footerDelta > 0)
+			{
+				footerLayout = footerLayout.withVerticalOffset(footerDelta);
+			}
+		}
 		int frameHeight = statsSelected
 			? Math.max(statsLayout.getFrameHeight(), BASE_FRAME_HEIGHT)
 			: Math.max(contentLayout.getFrameHeight(), footerLayout.getFrameHeight());
@@ -321,7 +329,7 @@ public class PlayerExamineOverlay extends Overlay
 			widestCell = Math.max(widestCell, measureStatCellWidth(metrics, skill, hiscoreData.getLevel(skill), showIcons));
 		}
 
-		int totalLevelWidth = metrics.stringWidth("Total level: " + formatNumber(hiscoreData.getLevel(PlayerHiscoreData.Skill.OVERALL)));
+		int totalLevelWidth = metrics.stringWidth("Total lvl: " + formatNumber(hiscoreData.getLevel(PlayerHiscoreData.Skill.OVERALL)));
 		int gridWidth = (widestCell * STATS_COLUMNS) + (STATS_COLUMN_GAP * (STATS_COLUMNS - 1)) + (STATS_SIDE_PADDING * 2);
 		int totalWidth = totalLevelWidth + (STATS_SIDE_PADDING * 2);
 		return Math.max(minimumWidth, Math.max(gridWidth, totalWidth));
@@ -330,13 +338,22 @@ public class PlayerExamineOverlay extends Overlay
 	private StatsLayout buildStatsLayout(Graphics2D graphics, PlayerHiscoreData hiscoreData, int frameWidth, boolean showIcons, int contentTop)
 	{
 		FontMetrics metrics = graphics.getFontMetrics();
-		int loadingHeight = contentTop + metrics.getHeight() + 12;
 		if (hiscoreData == null)
 		{
 			String message = plugin.getHiscoreLookupState() == PlayerExaminePlugin.HiscoreLookupState.LOADING
 				? "Looking up hiscores..."
 				: "Hiscores unavailable";
-			return new StatsLayout(loadingHeight, contentTop, showIcons, plugin.getHiscoreLookupState() == PlayerExaminePlugin.HiscoreLookupState.LOADING, plugin.getHiscoreLookupState() == PlayerExaminePlugin.HiscoreLookupState.UNAVAILABLE, new ArrayList<>(), message, contentTop, metrics.getHeight());
+			int reservedHeight = estimateStatsFrameHeight(metrics, contentTop, showIcons);
+			return new StatsLayout(
+				reservedHeight,
+				contentTop,
+				showIcons,
+				plugin.getHiscoreLookupState() == PlayerExaminePlugin.HiscoreLookupState.LOADING,
+				plugin.getHiscoreLookupState() == PlayerExaminePlugin.HiscoreLookupState.UNAVAILABLE,
+				new ArrayList<>(),
+				message,
+				contentTop,
+				metrics.getHeight());
 		}
 
 		PlayerHiscoreData.Skill[] skills = PlayerHiscoreData.displaySkills();
@@ -356,9 +373,19 @@ public class PlayerExamineOverlay extends Overlay
 
 		int gridBottom = contentTop + (rowsPerColumn * rowHeight);
 		int totalLevelY = gridBottom + STATS_OVERALL_GAP;
-		String totalLevelText = "Total level: " + formatNumber(hiscoreData.getLevel(PlayerHiscoreData.Skill.OVERALL));
-		int frameHeight = Math.max(BASE_FRAME_HEIGHT, totalLevelY + metrics.getHeight() + 14);
+		String totalLevelText = "Total lvl: " + formatNumber(hiscoreData.getLevel(PlayerHiscoreData.Skill.OVERALL));
+		int frameHeight = estimateStatsFrameHeight(metrics, contentTop, showIcons);
 		return new StatsLayout(frameHeight, contentTop, showIcons, false, false, cells, totalLevelText, totalLevelY, metrics.getHeight());
+	}
+
+	private int estimateStatsFrameHeight(FontMetrics metrics, int contentTop, boolean showIcons)
+	{
+		PlayerHiscoreData.Skill[] skills = PlayerHiscoreData.displaySkills();
+		int rowsPerColumn = (skills.length + STATS_COLUMNS - 1) / STATS_COLUMNS;
+		int rowHeight = Math.max(metrics.getHeight(), showIcons ? STATS_ICON_SIZE : 0) + STATS_ROW_GAP + 2;
+		int gridBottom = contentTop + (rowsPerColumn * rowHeight);
+		int totalLevelY = gridBottom + STATS_OVERALL_GAP;
+		return Math.max(BASE_FRAME_HEIGHT, totalLevelY + metrics.getHeight() + 14);
 	}
 
 	private void drawStats(Graphics2D graphics, StatsLayout layout, int frameWidth, PlayerHiscoreData hiscoreData)
@@ -1285,6 +1312,16 @@ public class PlayerExamineOverlay extends Overlay
 			lines.add(right);
 			int frameHeight = Math.max(BASE_FRAME_HEIGHT, startY + (lineHeight * 2) + lineGap + bottomMargin);
 			return new FooterLayout(lines, false, true, startY, frameHeight);
+		}
+
+		FooterLayout withVerticalOffset(int delta)
+		{
+			if (delta <= 0 || isEmpty())
+			{
+				return this;
+			}
+
+			return new FooterLayout(lines, inlinePair, stacked, startY + delta, frameHeight + delta);
 		}
 
 		boolean isEmpty()
