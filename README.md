@@ -21,7 +21,7 @@ Player Examine turns player examines into a compact, configurable overlay for ch
 - Opens a movable overlay after examining a player
 - Supports `Visual`, `List`, and `Hybrid` equipment layouts
 - Supports an optional stats tab with visual or list-style display
-- Shows item hover tooltips with GE value, HA value, equipment bonuses, compare deltas, and wiki links
+- Shows item hover tooltips with GE value, HA value, equipment bonuses, compare deltas, and optional wiki links
 - Shows stats hover tooltips with skill name, rank, experience, and remaining XP
 - Supports total value display in the overlay footer
 - Supports hiding slots marked `Not visible from examine`

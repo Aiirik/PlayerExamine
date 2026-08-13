@@ -420,7 +420,8 @@ public class PlayerExamineOverlay extends Overlay
 		if (showIcons)
 		{
 			int iconWidth = STATS_ICON_SIZE;
-			int groupWidth = iconWidth + STATS_ICON_GAP + valueWidth;
+			int valueSlotWidth = measureStatsValueSlotWidth(metrics);
+			int groupWidth = iconWidth + STATS_ICON_GAP + valueSlotWidth;
 			int groupX = bounds.x + Math.max((bounds.width - groupWidth) / 2, 0);
 			int groupHeight = Math.max(metrics.getHeight(), STATS_ICON_SIZE);
 			int groupY = bounds.y + Math.max((bounds.height - groupHeight) / 2, 0);
@@ -453,10 +454,15 @@ public class PlayerExamineOverlay extends Overlay
 		String value = formatNumber(level);
 		if (showIcons)
 		{
-			return STATS_ICON_SIZE + STATS_ICON_GAP + metrics.stringWidth(value);
+			return STATS_ICON_SIZE + STATS_ICON_GAP + measureStatsValueSlotWidth(metrics);
 		}
 
 		return metrics.stringWidth(skill.getLabel() + ": ") + metrics.stringWidth(value);
+	}
+
+	private static int measureStatsValueSlotWidth(FontMetrics metrics)
+	{
+		return metrics.stringWidth("99");
 	}
 
 	private static Dimension fitImage(BufferedImage image, int maxWidth, int maxHeight)

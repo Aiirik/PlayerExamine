@@ -342,11 +342,12 @@ public interface PlayerExamineConfig extends Config
 		name = "Open wiki on item click",
 		position = 5,
 		section = ITEM_INFO_SECTION,
-		description = "Open the Old School RuneScape wiki page when clicking an item slot"
+		description = "Open the Old School RuneScape wiki page when clicking an item slot",
+		warning = "This feature submits your IP address to a 3rd-party server not controlled or verified by RuneLite developers"
 	)
 	default boolean openWikiOnItemClick()
 	{
-		return true;
+		return false;
 	}
 
 	@ConfigItem(
