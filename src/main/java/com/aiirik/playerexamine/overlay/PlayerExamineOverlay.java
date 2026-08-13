@@ -69,10 +69,10 @@ public class PlayerExamineOverlay extends Overlay
 	private static final int LIST_ROW_PADDING_Y = 2;
 	private static final int STATS_SIDE_PADDING = 8;
 	private static final int STATS_COLUMN_GAP = 8;
-	private static final int STATS_ROW_GAP = 5;
-	private static final int STATS_ICON_SIZE = 18;
+	private static final int STATS_ROW_GAP = 4;
+	private static final int STATS_ICON_SIZE = 20;
 	private static final int STATS_ICON_GAP = 4;
-	private static final int STATS_OVERALL_GAP = 10;
+	private static final int STATS_OVERALL_GAP = 6;
 	private static final int STATS_COLUMNS = 3;
 	private static final int HYBRID_ICON_SIZE = 20;
 	private static final int HYBRID_ICON_GAP = 6;
@@ -164,7 +164,11 @@ public class PlayerExamineOverlay extends Overlay
 		}
 		int frameHeight = statsSelected
 			? Math.max(statsLayout.getFrameHeight(), BASE_FRAME_HEIGHT)
-			: Math.max(contentLayout.getFrameHeight(), footerLayout.getFrameHeight());
+			: Math.max(Math.max(contentLayout.getFrameHeight(), footerLayout.getFrameHeight()), showStatsTab ? statsLayout.getFrameHeight() : BASE_FRAME_HEIGHT);
+		if (!statsSelected)
+		{
+			contentLayout = contentLayout.withVerticalOffset(calculateEquipmentContentOffset(contentLayout, footerLayout, frameHeight, contentTop));
+		}
 		Rectangle closeButton = new Rectangle(frameWidth - 20, 2, 16, 14);
 
 		drawFrame(graphics, data, closeButton, frameHeight, frameWidth);
@@ -329,7 +333,7 @@ public class PlayerExamineOverlay extends Overlay
 			widestCell = Math.max(widestCell, measureStatCellWidth(metrics, skill, hiscoreData.getLevel(skill), showIcons));
 		}
 
-		int totalLevelWidth = metrics.stringWidth("Total lvl: " + formatNumber(hiscoreData.getLevel(PlayerHiscoreData.Skill.OVERALL)));
+		int totalLevelWidth = metrics.stringWidth("Total level: " + formatNumber(hiscoreData.getLevel(PlayerHiscoreData.Skill.OVERALL)));
 		int gridWidth = (widestCell * STATS_COLUMNS) + (STATS_COLUMN_GAP * (STATS_COLUMNS - 1)) + (STATS_SIDE_PADDING * 2);
 		int totalWidth = totalLevelWidth + (STATS_SIDE_PADDING * 2);
 		return Math.max(minimumWidth, Math.max(gridWidth, totalWidth));
@@ -373,7 +377,7 @@ public class PlayerExamineOverlay extends Overlay
 
 		int gridBottom = contentTop + (rowsPerColumn * rowHeight);
 		int totalLevelY = gridBottom + STATS_OVERALL_GAP;
-		String totalLevelText = "Total lvl: " + formatNumber(hiscoreData.getLevel(PlayerHiscoreData.Skill.OVERALL));
+		String totalLevelText = "Total level: " + formatNumber(hiscoreData.getLevel(PlayerHiscoreData.Skill.OVERALL));
 		int frameHeight = estimateStatsFrameHeight(metrics, contentTop, showIcons);
 		return new StatsLayout(frameHeight, contentTop, showIcons, false, false, cells, totalLevelText, totalLevelY, metrics.getHeight());
 	}
@@ -385,7 +389,7 @@ public class PlayerExamineOverlay extends Overlay
 		int rowHeight = Math.max(metrics.getHeight(), showIcons ? STATS_ICON_SIZE : 0) + STATS_ROW_GAP + 2;
 		int gridBottom = contentTop + (rowsPerColumn * rowHeight);
 		int totalLevelY = gridBottom + STATS_OVERALL_GAP;
-		return Math.max(BASE_FRAME_HEIGHT, totalLevelY + metrics.getHeight() + 14);
+		return Math.max(BASE_FRAME_HEIGHT, totalLevelY + metrics.getHeight() + FOOTER_BOTTOM_MARGIN);
 	}
 
 	private void drawStats(Graphics2D graphics, StatsLayout layout, int frameWidth, PlayerHiscoreData hiscoreData)
@@ -420,11 +424,13 @@ public class PlayerExamineOverlay extends Overlay
 			int groupX = bounds.x + Math.max((bounds.width - groupWidth) / 2, 0);
 			int groupHeight = Math.max(metrics.getHeight(), STATS_ICON_SIZE);
 			int groupY = bounds.y + Math.max((bounds.height - groupHeight) / 2, 0);
-			BufferedImage icon = skillIconManager.getSkillImage(cell.getSkill().getApiSkill(), true);
+			BufferedImage icon = skillIconManager.getSkillImage(cell.getSkill().getApiSkill(), false);
 			if (icon != null)
 			{
-				int iconY = groupY + ((groupHeight - STATS_ICON_SIZE) / 2);
-				graphics.drawImage(icon, groupX, iconY, STATS_ICON_SIZE, STATS_ICON_SIZE, null);
+				Dimension iconSize = fitImage(icon, STATS_ICON_SIZE, STATS_ICON_SIZE);
+				int iconX = groupX + ((STATS_ICON_SIZE - iconSize.width) / 2);
+				int iconY = groupY + ((groupHeight - iconSize.height) / 2);
+				graphics.drawImage(icon, iconX, iconY, iconSize.width, iconSize.height, null);
 			}
 
 			int valueX = groupX + STATS_ICON_SIZE + STATS_ICON_GAP;
@@ -451,6 +457,21 @@ public class PlayerExamineOverlay extends Overlay
 		}
 
 		return metrics.stringWidth(skill.getLabel() + ": ") + metrics.stringWidth(value);
+	}
+
+	private static Dimension fitImage(BufferedImage image, int maxWidth, int maxHeight)
+	{
+		int imageWidth = image.getWidth();
+		int imageHeight = image.getHeight();
+		if (imageWidth <= 0 || imageHeight <= 0)
+		{
+			return new Dimension(maxWidth, maxHeight);
+		}
+
+		double scale = Math.min((double) maxWidth / imageWidth, (double) maxHeight / imageHeight);
+		int width = Math.max(1, (int) Math.round(imageWidth * scale));
+		int height = Math.max(1, (int) Math.round(imageHeight * scale));
+		return new Dimension(width, height);
 	}
 
 	private int calculateListFrameWidth(Graphics2D graphics, PlayerExamineData data, boolean showIcons, int minimumWidth)
@@ -553,6 +574,33 @@ public class PlayerExamineOverlay extends Overlay
 		}
 
 		return ContentLayout.forRows(slots, rows, rows.isEmpty() ? contentTop : currentY - 1);
+	}
+
+	private int calculateEquipmentContentOffset(ContentLayout contentLayout, FooterLayout footerLayout, int frameHeight, int contentTop)
+	{
+		if (contentLayout.isListMode())
+		{
+			return 0;
+		}
+
+		int contentHeight = contentLayout.getContentBottom() - contentTop;
+		if (contentHeight <= 0)
+		{
+			return 0;
+		}
+
+		boolean hasFooter = !footerLayout.isEmpty();
+		int availableBottom = hasFooter
+			? footerLayout.getStartY() - FOOTER_TOP_MARGIN
+			: frameHeight - FOOTER_BOTTOM_MARGIN;
+		int availableHeight = availableBottom - contentTop;
+		if (availableHeight <= contentHeight)
+		{
+			return 0;
+		}
+
+		int extraHeight = availableHeight - contentHeight;
+		return hasFooter ? extraHeight / 2 : extraHeight / 3;
 	}
 
 	private String buildSlotValue(SlotState slot)
@@ -1316,7 +1364,7 @@ public class PlayerExamineOverlay extends Overlay
 
 		FooterLayout withVerticalOffset(int delta)
 		{
-			if (delta <= 0 || isEmpty())
+			if (delta <= 0)
 			{
 				return this;
 			}
@@ -1353,6 +1401,7 @@ public class PlayerExamineOverlay extends Overlay
 		{
 			return frameHeight;
 		}
+
 	}
 
 	private static final class ContentLayout
@@ -1407,6 +1456,24 @@ public class PlayerExamineOverlay extends Overlay
 		int getFrameHeight()
 		{
 			return frameHeight;
+		}
+
+		ContentLayout withVerticalOffset(int delta)
+		{
+			if (delta <= 0 || listMode)
+			{
+				return this;
+			}
+
+			List<SlotState> movedSlots = new ArrayList<>();
+			for (SlotState slot : slots)
+			{
+				Rectangle bounds = new Rectangle(slot.getBounds());
+				bounds.y += delta;
+				movedSlots.add(new SlotState(slot.getKey(), bounds, slot.getEntry(), slot.isDrawFrame(), slot.isShowEmptyTooltip()));
+			}
+
+			return new ContentLayout(movedSlots, rows, false, frameHeight + delta, contentBottom + delta);
 		}
 	}
 
