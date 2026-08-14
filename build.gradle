@@ -37,7 +37,8 @@ tasks.register('run', JavaExec) {
 	mainClass = pluginMainClass
 
 	jvmArgs "-ea"
-	args "--developer-mode", "--debug"
+	args "--developer-mode"
+ // args "--developer-mode", "--debug" // Re-enable for debug mode
 }
 
 tasks.register('shadowJar', Jar) {

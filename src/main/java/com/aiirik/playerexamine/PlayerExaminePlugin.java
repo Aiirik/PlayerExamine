@@ -145,10 +145,19 @@ public class PlayerExaminePlugin extends Plugin
 				chatMessageManager,
 				config.disableUpdateNotifications());
 		}
-		else
+		else if (shouldClearCurrentData(event.getGameState()))
 		{
 			setCurrentData(null);
 		}
+	}
+
+	private static boolean shouldClearCurrentData(GameState gameState)
+	{
+		return gameState == GameState.LOGIN_SCREEN
+			|| gameState == GameState.LOGIN_SCREEN_AUTHENTICATOR
+			|| gameState == GameState.LOGGING_IN
+			|| gameState == GameState.CONNECTION_LOST
+			|| gameState == GameState.HOPPING;
 	}
 
 	@Subscribe
