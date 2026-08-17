@@ -809,15 +809,21 @@ public class PlayerExamineOverlay extends Overlay
 
 		if (slot.isDrawFrame())
 		{
-			graphics.setColor(applyOverlayTransparency(hover ? overlaySlotHoverColor() : overlaySlotBorderColor()));
-			graphics.drawRect(bounds.x - 1, bounds.y - 1, bounds.width + 1, bounds.height + 1);
-
 			Color fillColor = hasItem ? overlaySlotFillColor() : overlaySlotEmptyColor();
 			if (fillColor.getAlpha() > 0)
 			{
 				graphics.setColor(applyOverlayTransparency(fillColor));
 				graphics.fillRect(bounds.x, bounds.y, bounds.width, bounds.height);
 			}
+
+			Color valueHighlight = getValueHighlightColor(entry);
+			if (valueHighlight != null)
+			{
+				drawSlotValueHighlight(graphics, bounds, valueHighlight);
+			}
+
+			graphics.setColor(applyOverlayTransparency(valueHighlight != null ? valueHighlight : (hover ? overlaySlotHoverColor() : overlaySlotBorderColor())));
+			graphics.drawRect(bounds.x - 1, bounds.y - 1, bounds.width + 1, bounds.height + 1);
 		}
 
 		if (hasItem && entry.getItemId() >= 0)
@@ -829,6 +835,38 @@ public class PlayerExamineOverlay extends Overlay
 				graphics.drawImage(sprite, bounds.x + SLOT_INSET_X, bounds.y + SLOT_INSET_Y, iconSize, iconSize, null);
 			}
 		}
+	}
+
+	private Color getValueHighlightColor(EquipmentEntry entry)
+	{
+		PlayerExamineConfig.ValueHighlightThreshold threshold = config.valueHighlightThreshold();
+		if (threshold == null || threshold == PlayerExamineConfig.ValueHighlightThreshold.Off || entry == null || !entry.hasItem() || entry.getItemId() < 0)
+		{
+			return null;
+		}
+
+		int geValue = itemManager.getItemPriceWithSource(entry.getItemId(), false);
+		return geValue >= threshold.getValue() ? valueHighlightColor() : null;
+	}
+
+	private void drawSlotValueHighlight(Graphics2D graphics, Rectangle bounds, Color color)
+	{
+		Stroke originalStroke = graphics.getStroke();
+		for (int i = 4; i >= 1; i--)
+		{
+			float ringAlpha = 0.08f + (0.05f * (4 - i));
+			int alpha = Math.min(210, Math.max(0, Math.round(color.getAlpha() * ringAlpha)));
+			if (alpha <= 0)
+			{
+				continue;
+			}
+
+			graphics.setColor(applyOverlayTransparency(new Color(color.getRed(), color.getGreen(), color.getBlue(), alpha)));
+			graphics.setStroke(new BasicStroke(1f));
+			graphics.drawRect(bounds.x - i, bounds.y - i, bounds.width - 1 + (i * 2), bounds.height - 1 + (i * 2));
+		}
+
+		graphics.setStroke(originalStroke);
 	}
 
 	private Rectangle[] buildSlotBoxes(int frameWidth, int contentTop)
@@ -1800,6 +1838,7 @@ public class PlayerExamineOverlay extends Overlay
 		private final Color totalGe;
 		private final Color totalHa;
 		private final Color flair;
+		private final Color valueHighlight;
 
 		private ThemeColors(
 			Color background,
@@ -1816,7 +1855,8 @@ public class PlayerExamineOverlay extends Overlay
 			Color slotHover,
 			Color totalGe,
 			Color totalHa,
-			Color flair)
+			Color flair,
+			Color valueHighlight)
 		{
 			this.background = background;
 			this.border = border;
@@ -1833,6 +1873,7 @@ public class PlayerExamineOverlay extends Overlay
 			this.totalGe = totalGe;
 			this.totalHa = totalHa;
 			this.flair = flair;
+			this.valueHighlight = valueHighlight;
 		}
 	}
 
@@ -1957,6 +1998,12 @@ public class PlayerExamineOverlay extends Overlay
 		return theme == null ? config.openingFlairColor() : theme.flair;
 	}
 
+	private Color valueHighlightColor()
+	{
+		ThemeColors theme = themeColors();
+		return theme == null ? config.valueHighlightColor() : theme.valueHighlight;
+	}
+
 	private ThemeColors themeColors()
 	{
 		PlayerExamineConfig.ThemePreset preset = config.themePreset();
@@ -1983,7 +2030,26 @@ public class PlayerExamineOverlay extends Overlay
 					new Color(150, 122, 76),
 					new Color(235, 226, 193),
 					new Color(200, 186, 140),
-					new Color(215, 125, 40, 220));
+					new Color(215, 125, 40, 220),
+					new Color(255, 190, 64, 210));
+			case Light:
+				return new ThemeColors(
+					new Color(226, 214, 188, 235),
+					new Color(116, 95, 60, 255),
+					new Color(50, 38, 24),
+					new Color(78, 62, 39),
+					new Color(58, 42, 26),
+					new Color(135, 111, 70),
+					new Color(210, 193, 158),
+					new Color(188, 154, 91),
+					new Color(204, 187, 151, 255),
+					new Color(184, 169, 138, 255),
+					new Color(126, 103, 65, 255),
+					new Color(168, 130, 68),
+					new Color(50, 38, 24),
+					new Color(78, 62, 39),
+					new Color(202, 139, 50, 220),
+					new Color(218, 154, 58, 210));
 			case Dark:
 				return new ThemeColors(
 					new Color(13, 15, 18, 235),
@@ -2000,7 +2066,8 @@ public class PlayerExamineOverlay extends Overlay
 					new Color(116, 131, 145),
 					new Color(222, 229, 235),
 					new Color(174, 184, 194),
-					new Color(116, 160, 190, 220));
+					new Color(116, 160, 190, 220),
+					new Color(128, 190, 220, 210));
 			case Gold:
 				return new ThemeColors(
 					new Color(28, 22, 10, 235),
@@ -2017,7 +2084,8 @@ public class PlayerExamineOverlay extends Overlay
 					new Color(211, 164, 59),
 					new Color(255, 232, 154),
 					new Color(232, 201, 104),
-					new Color(255, 190, 64, 230));
+					new Color(255, 190, 64, 230),
+					new Color(255, 218, 96, 220));
 			case Zaros:
 				return new ThemeColors(
 					new Color(19, 17, 31, 235),
@@ -2034,7 +2102,8 @@ public class PlayerExamineOverlay extends Overlay
 					new Color(133, 93, 188),
 					new Color(230, 219, 255),
 					new Color(190, 176, 230),
-					new Color(162, 105, 232, 225));
+					new Color(162, 105, 232, 225),
+					new Color(186, 134, 255, 215));
 			case Guthix:
 				return new ThemeColors(
 					new Color(14, 27, 20, 235),
@@ -2051,7 +2120,26 @@ public class PlayerExamineOverlay extends Overlay
 					new Color(102, 159, 90),
 					new Color(219, 239, 207),
 					new Color(180, 218, 160),
-					new Color(116, 210, 92, 225));
+					new Color(116, 210, 92, 225),
+					new Color(142, 226, 108, 215));
+			case Saradomin:
+				return new ThemeColors(
+					new Color(13, 22, 36, 235),
+					new Color(64, 111, 178, 255),
+					new Color(222, 238, 255),
+					new Color(170, 207, 245),
+					new Color(222, 238, 255),
+					new Color(31, 55, 89),
+					new Color(24, 43, 70),
+					new Color(55, 103, 166),
+					new Color(26, 45, 73, 255),
+					new Color(16, 29, 48, 255),
+					new Color(54, 93, 146, 255),
+					new Color(85, 143, 214),
+					new Color(222, 238, 255),
+					new Color(170, 207, 245),
+					new Color(92, 166, 245, 225),
+					new Color(116, 190, 255, 215));
 			case Blood:
 				return new ThemeColors(
 					new Color(31, 12, 13, 235),
@@ -2068,7 +2156,8 @@ public class PlayerExamineOverlay extends Overlay
 					new Color(190, 64, 64),
 					new Color(247, 220, 205),
 					new Color(226, 153, 137),
-					new Color(230, 72, 72, 225));
+					new Color(230, 72, 72, 225),
+					new Color(255, 92, 76, 215));
 			default:
 				return null;
 		}

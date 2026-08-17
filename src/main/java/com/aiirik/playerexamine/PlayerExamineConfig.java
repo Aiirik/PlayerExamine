@@ -38,11 +38,55 @@ public interface PlayerExamineConfig extends Config
 	{
 		Custom,
 		Classic,
+		Light,
 		Dark,
 		Gold,
 		Zaros,
 		Guthix,
+		Saradomin,
 		Blood
+	}
+
+	enum DefaultTab
+	{
+		Equipment,
+		Stats,
+		RememberLast
+		{
+			@Override
+			public String toString()
+			{
+				return "Remember last";
+			}
+		}
+	}
+
+	enum ValueHighlightThreshold
+	{
+		Off(0, "Off"),
+		OneMillion(1_000_000L, "1m+"),
+		TenMillion(10_000_000L, "10m+"),
+		HundredMillion(100_000_000L, "100m+");
+
+		private final long value;
+		private final String name;
+
+		ValueHighlightThreshold(long value, String name)
+		{
+			this.value = value;
+			this.name = name;
+		}
+
+		public long getValue()
+		{
+			return value;
+		}
+
+		@Override
+		public String toString()
+		{
+			return name;
+		}
 	}
 
 	enum OverlayMode
@@ -189,6 +233,18 @@ public interface PlayerExamineConfig extends Config
 	}
 
 	@ConfigItem(
+		keyName = "defaultTab",
+		name = "Default tab",
+		position = 2,
+		section = OVERLAY_SECTION,
+		description = "Choose which tab opens for new player examines"
+	)
+	default DefaultTab defaultTab()
+	{
+		return DefaultTab.Equipment;
+	}
+
+	@ConfigItem(
 		keyName = "themePreset",
 		name = "Theme preset",
 		position = 0,
@@ -228,8 +284,8 @@ public interface PlayerExamineConfig extends Config
 	@ConfigItem(
 		keyName = "overlayTransparency",
 		name = "Overlay transparency",
-		position = 5,
-		section = OVERLAY_SECTION,
+		position = 17,
+		section = OVERLAY_COLORS_SECTION,
 		description = "Apply additional transparency to overlay backgrounds, borders, and slots"
 	)
 	@Range(min = 0, max = 100)
@@ -241,8 +297,8 @@ public interface PlayerExamineConfig extends Config
 	@ConfigItem(
 		keyName = "overlayTextTransparency",
 		name = "Text transparency",
-		position = 6,
-		section = OVERLAY_SECTION,
+		position = 18,
+		section = OVERLAY_COLORS_SECTION,
 		description = "Apply additional transparency to overlay and tooltip text"
 	)
 	@Range(min = 0, max = 100)
@@ -272,7 +328,19 @@ public interface PlayerExamineConfig extends Config
 	)
 	default TotalValueFormat totalValueFormat()
 	{
-		return TotalValueFormat.Long;
+		return TotalValueFormat.Short;
+	}
+
+	@ConfigItem(
+		keyName = "valueHighlightThreshold",
+		name = "Value highlight",
+		position = 11,
+		section = OVERLAY_SECTION,
+		description = "Glow equipment slot borders when an item is at or above this GE value"
+	)
+	default ValueHighlightThreshold valueHighlightThreshold()
+	{
+		return ValueHighlightThreshold.Off;
 	}
 
 	@ConfigItem(
@@ -356,7 +424,7 @@ public interface PlayerExamineConfig extends Config
 	)
 	default TotalValueFormat itemValueFormat()
 	{
-		return TotalValueFormat.Long;
+		return TotalValueFormat.Short;
 	}
 
 	@ConfigItem(
@@ -469,23 +537,11 @@ public interface PlayerExamineConfig extends Config
 	}
 
 	@ConfigItem(
-		keyName = "rememberLastTab",
-		name = "Remember last tab",
-		position = 9,
-		section = OVERLAY_SECTION,
-		description = "Open new player examines on the last selected overlay tab"
-	)
-	default boolean rememberLastTab()
-	{
-		return false;
-	}
-
-	@ConfigItem(
 		keyName = "openingFlair",
-		name = "Opening flair",
-		position = 10,
-		section = OVERLAY_SECTION,
-		description = "Pulse the overlay border briefly after opening an examine"
+		name = "Opening glow",
+		position = 19,
+		section = OVERLAY_COLORS_SECTION,
+		description = "Show a brief glow around the overlay after opening an examine"
 	)
 	default boolean openingFlair()
 	{
@@ -718,14 +774,27 @@ public interface PlayerExamineConfig extends Config
 	@Alpha
 	@ConfigItem(
 		keyName = "openingFlairColor",
-		name = "Opening flair",
+		name = "Opening glow",
 		position = 15,
 		section = OVERLAY_COLORS_SECTION,
-		description = "Opening flair color when using the Custom theme preset"
+		description = "Opening glow color when using the Custom theme preset"
 	)
 	default Color openingFlairColor()
 	{
 		return new Color(215, 125, 40, 180);
+	}
+
+	@Alpha
+	@ConfigItem(
+		keyName = "valueHighlightColor",
+		name = "Value highlight",
+		position = 16,
+		section = OVERLAY_COLORS_SECTION,
+		description = "Equipment value highlight color when using the Custom theme preset"
+	)
+	default Color valueHighlightColor()
+	{
+		return new Color(255, 190, 64, 190);
 	}
 
 }
