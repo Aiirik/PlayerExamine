@@ -12,12 +12,14 @@ import java.awt.FontMetrics;
 import java.awt.Graphics2D;
 import java.awt.Rectangle;
 import java.awt.RenderingHints;
+import java.awt.Stroke;
 import java.awt.image.BufferedImage;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import javax.inject.Inject;
 import net.runelite.api.Client;
@@ -71,9 +73,11 @@ public class PlayerExamineOverlay extends Overlay
 	private static final int STATS_COLUMN_GAP = 8;
 	private static final int STATS_ROW_GAP = 4;
 	private static final int STATS_ICON_SIZE = 20;
+	private static final int STATS_ATTACK_ICON_SIZE = 24;
 	private static final int STATS_ICON_GAP = 4;
 	private static final int STATS_OVERALL_GAP = 6;
 	private static final int STATS_COLUMNS = 3;
+	private static final int OPENING_FLAIR_DURATION_MS = 1200;
 	private static final int HYBRID_ICON_SIZE = 20;
 	private static final int HYBRID_ICON_GAP = 6;
 	private static final int HYBRID_ROW_PADDING_Y = 4;
@@ -85,6 +89,7 @@ public class PlayerExamineOverlay extends Overlay
 	private final TooltipManager tooltipManager;
 	private volatile RenderState renderState = RenderState.empty();
 	private volatile OverlayTab selectedTab = OverlayTab.EQUIPMENT;
+	private volatile long openedAtMillis;
 
 	public enum OverlayTab
 	{
@@ -212,19 +217,24 @@ public class PlayerExamineOverlay extends Overlay
 		return selectedTab;
 	}
 
+	public void markOpened()
+	{
+		openedAtMillis = System.currentTimeMillis();
+	}
+
 	private void drawFrame(Graphics2D graphics, PlayerExamineData data, Rectangle closeButton, int frameHeight, int frameWidth)
 	{
-		graphics.setColor(applyOverlayTransparency(config.overlayBorderColor()));
+		graphics.setColor(applyOverlayTransparency(overlayBorderColor()));
 		graphics.drawRect(0, 0, frameWidth - 1, frameHeight - 1);
 
-		Color backgroundColor = config.overlayBackgroundColor();
+		Color backgroundColor = overlayBackgroundColor();
 		if (backgroundColor.getAlpha() > 0)
 		{
 			graphics.setColor(applyOverlayTransparency(backgroundColor));
 			graphics.fillRect(1, 1, frameWidth - 2, frameHeight - 2);
 		}
 
-		graphics.setColor(applyOverlayTransparency(config.overlayBorderColor()));
+		graphics.setColor(applyOverlayTransparency(overlayBorderColor()));
 		graphics.setStroke(new BasicStroke(1f));
 		graphics.drawLine(2, TITLE_BAR_HEIGHT - 1, frameWidth - 3, TITLE_BAR_HEIGHT - 1);
 
@@ -236,25 +246,27 @@ public class PlayerExamineOverlay extends Overlay
 		int combatX = Math.max(8, frameWidth - combatWidth - 24);
 
 		String title = fitText(graphics, data.getName(), Math.max(0, combatX - 16));
-		drawShadowText(graphics, title, 8, titleBaseline, config.usernameTextColor());
-		drawShadowText(graphics, combat, combatX, titleBaseline, config.combatTextColor());
+		drawShadowText(graphics, title, 8, titleBaseline, usernameTextColor());
+		drawShadowText(graphics, combat, combatX, titleBaseline, combatTextColor());
 
 		boolean hoverClose = isMouseInside(closeButton);
-		Color closeFill = hoverClose ? config.overlayCloseHoverColor() : config.overlayCloseColor();
+		Color closeFill = hoverClose ? overlayCloseHoverColor() : overlayCloseColor();
 		if (config.overlayTransparency() > 0)
 		{
 			closeFill = applyOverlayTransparency(closeFill);
 		}
 		graphics.setColor(closeFill);
 		graphics.fillRect(closeButton.x, closeButton.y, closeButton.width, closeButton.height);
-		Color closeBorder = config.xBorderColor();
+		Color closeBorder = xBorderColor();
 		if (config.overlayTransparency() > 0)
 		{
 			closeBorder = applyOverlayTransparency(closeBorder, 0.75f);
 		}
 		graphics.setColor(closeBorder);
 		graphics.drawRect(closeButton.x, closeButton.y, closeButton.width, closeButton.height);
-		drawCenteredOpaqueShadowText(graphics, "X", closeButton, config.xTextColor());
+		drawCenteredOpaqueShadowText(graphics, "X", closeButton, xTextColor());
+
+		drawOpeningFlair(graphics, frameWidth, frameHeight);
 	}
 
 	private TabLayout buildTabLayout(int frameWidth)
@@ -276,12 +288,44 @@ public class PlayerExamineOverlay extends Overlay
 
 	private void drawTabButton(Graphics2D graphics, Rectangle bounds, boolean selected, String text)
 	{
-		graphics.setColor(applyOverlayTransparency(selected ? config.overlaySlotFillColor() : config.overlaySlotEmptyColor()));
+		graphics.setColor(applyOverlayTransparency(selected ? overlaySlotFillColor() : overlaySlotEmptyColor()));
 		graphics.fillRect(bounds.x, bounds.y, bounds.width, bounds.height);
-		graphics.setColor(applyOverlayTransparency(selected ? config.overlaySlotHoverColor() : config.overlaySlotBorderColor()));
+		graphics.setColor(applyOverlayTransparency(selected ? overlaySlotHoverColor() : overlaySlotBorderColor()));
 		graphics.drawRect(bounds.x, bounds.y, bounds.width, bounds.height);
 		Rectangle textBounds = new Rectangle(bounds.x, bounds.y + 2, bounds.width, Math.max(0, bounds.height - 2));
-		drawCenteredShadowText(graphics, text, textBounds, selected ? config.tooltipItemTextColor() : config.combatTextColor());
+		drawCenteredShadowText(graphics, text, textBounds, selected ? config.tooltipItemTextColor() : combatTextColor());
+	}
+
+	private void drawOpeningFlair(Graphics2D graphics, int frameWidth, int frameHeight)
+	{
+		if (!config.openingFlair())
+		{
+			return;
+		}
+
+		long elapsed = System.currentTimeMillis() - openedAtMillis;
+		if (elapsed < 0 || elapsed > OPENING_FLAIR_DURATION_MS)
+		{
+			return;
+		}
+
+		float remaining = 1.0f - ((float) elapsed / OPENING_FLAIR_DURATION_MS);
+		Color flair = openingFlairColor();
+		Stroke originalStroke = graphics.getStroke();
+		for (int i = 4; i >= 0; i--)
+		{
+			float ringAlpha = remaining * (0.15f + (0.11f * (4 - i)));
+			int alpha = Math.min(230, Math.max(0, Math.round(flair.getAlpha() * ringAlpha)));
+			if (alpha <= 0)
+			{
+				continue;
+			}
+
+			graphics.setColor(applyOverlayTransparency(new Color(flair.getRed(), flair.getGreen(), flair.getBlue(), alpha)));
+			graphics.setStroke(new BasicStroke(i <= 1 ? 2f : 1f));
+			graphics.drawRect(i, i, frameWidth - 1 - (i * 2), frameHeight - 1 - (i * 2));
+		}
+		graphics.setStroke(originalStroke);
 	}
 
 	private ContentLayout buildContentLayout(Graphics2D graphics, PlayerExamineData data, PlayerExamineConfig.OverlayMode overlayMode, int frameWidth, int contentTop)
@@ -399,7 +443,7 @@ public class PlayerExamineOverlay extends Overlay
 		if (layout.isLoading() || layout.isUnavailable() || hiscoreData == null)
 		{
 			String message = layout.isLoading() ? "Looking up hiscores..." : "Hiscores unavailable";
-			drawCenteredShadowText(graphics, message, new Rectangle(0, topY, frameWidth, metrics.getHeight()), config.combatTextColor());
+			drawCenteredShadowText(graphics, message, new Rectangle(0, topY, frameWidth, metrics.getHeight()), combatTextColor());
 			return;
 		}
 
@@ -425,10 +469,11 @@ public class PlayerExamineOverlay extends Overlay
 			int groupX = bounds.x + Math.max((bounds.width - groupWidth) / 2, 0);
 			int groupHeight = Math.max(metrics.getHeight(), STATS_ICON_SIZE);
 			int groupY = bounds.y + Math.max((bounds.height - groupHeight) / 2, 0);
-			BufferedImage icon = skillIconManager.getSkillImage(cell.getSkill().getApiSkill(), false);
+			BufferedImage icon = getStatIcon(cell.getSkill());
 			if (icon != null)
 			{
-				Dimension iconSize = fitImage(icon, STATS_ICON_SIZE, STATS_ICON_SIZE);
+				int iconMaxSize = hasAttackIconOverride(cell.getSkill()) ? STATS_ATTACK_ICON_SIZE : STATS_ICON_SIZE;
+				Dimension iconSize = fitImage(icon, iconMaxSize, iconMaxSize);
 				int iconX = groupX + ((STATS_ICON_SIZE - iconSize.width) / 2);
 				int iconY = groupY + ((groupHeight - iconSize.height) / 2);
 				graphics.drawImage(icon, iconX, iconY, iconSize.width, iconSize.height, null);
@@ -458,6 +503,32 @@ public class PlayerExamineOverlay extends Overlay
 		}
 
 		return metrics.stringWidth(skill.getLabel() + ": ") + metrics.stringWidth(value);
+	}
+
+	private BufferedImage getStatIcon(PlayerHiscoreData.Skill skill)
+	{
+		if (skill == PlayerHiscoreData.Skill.ATTACK)
+		{
+			PlayerExamineConfig.AttackIcon attackIcon = config.attackIcon();
+			if (attackIcon != null && attackIcon.getItemId() >= 0)
+			{
+				AsyncBufferedImage icon = itemManager.getImage(attackIcon.getItemId());
+				if (icon != null)
+				{
+					return icon;
+				}
+			}
+		}
+
+		return skillIconManager.getSkillImage(skill.getApiSkill(), false);
+	}
+
+	private boolean hasAttackIconOverride(PlayerHiscoreData.Skill skill)
+	{
+		PlayerExamineConfig.AttackIcon attackIcon = config.attackIcon();
+		return skill == PlayerHiscoreData.Skill.ATTACK
+			&& attackIcon != null
+			&& attackIcon.getItemId() >= 0;
 	}
 
 	private static int measureStatsValueSlotWidth(FontMetrics metrics)
@@ -738,10 +809,10 @@ public class PlayerExamineOverlay extends Overlay
 
 		if (slot.isDrawFrame())
 		{
-			graphics.setColor(applyOverlayTransparency(hover ? config.overlaySlotHoverColor() : config.overlaySlotBorderColor()));
+			graphics.setColor(applyOverlayTransparency(hover ? overlaySlotHoverColor() : overlaySlotBorderColor()));
 			graphics.drawRect(bounds.x - 1, bounds.y - 1, bounds.width + 1, bounds.height + 1);
 
-			Color fillColor = hasItem ? config.overlaySlotFillColor() : config.overlaySlotEmptyColor();
+			Color fillColor = hasItem ? overlaySlotFillColor() : overlaySlotEmptyColor();
 			if (fillColor.getAlpha() > 0)
 			{
 				graphics.setColor(applyOverlayTransparency(fillColor));
@@ -924,12 +995,12 @@ public class PlayerExamineOverlay extends Overlay
 		List<String> valueLines = new ArrayList<>();
 		if (config.showGeValue())
 		{
-			valueLines.add(formatTooltipStatLine("GE", formatPrice(itemManager.getItemPriceWithSource(entry.getItemId(), false)), null));
+			valueLines.add(formatTooltipStatLine("GE", formatItemValue(itemManager.getItemPriceWithSource(entry.getItemId(), false)), null));
 		}
 
 		if (config.showHaValue())
 		{
-			valueLines.add(formatTooltipStatLine("HA", formatPrice(client.getItemDefinition(entry.getItemId()).getHaPrice()), null));
+			valueLines.add(formatTooltipStatLine("HA", formatItemValue(client.getItemDefinition(entry.getItemId()).getHaPrice()), null));
 		}
 
 		if (!valueLines.isEmpty())
@@ -1202,8 +1273,8 @@ public class PlayerExamineOverlay extends Overlay
 			haTotal += client.getItemDefinition(itemId).getHaPrice();
 		}
 
-		String geText = "GE Total: " + formatPrice(geTotal);
-		String haText = "HA Total: " + formatPrice(haTotal);
+		String geText = "GE: " + formatTotalValue(geTotal);
+		String haText = "HA: " + formatTotalValue(haTotal);
 		int footerWidth = frameWidth - (FOOTER_SIDE_PADDING * 2);
 		int lineHeight = metrics.getHeight();
 		int footerStartY = contentBottom + FOOTER_TOP_MARGIN;
@@ -1211,9 +1282,9 @@ public class PlayerExamineOverlay extends Overlay
 		switch (totalValueMode)
 		{
 			case Ge:
-				return FooterLayout.single(new FooterLine(geText, config.totalGeTextColor()), footerStartY, lineHeight, FOOTER_BOTTOM_MARGIN);
+				return FooterLayout.single(new FooterLine(geText, totalGeTextColor()), footerStartY, lineHeight, FOOTER_BOTTOM_MARGIN);
 			case HA:
-				return FooterLayout.single(new FooterLine(haText, config.totalHaTextColor()), footerStartY, lineHeight, FOOTER_BOTTOM_MARGIN);
+				return FooterLayout.single(new FooterLine(haText, totalHaTextColor()), footerStartY, lineHeight, FOOTER_BOTTOM_MARGIN);
 			case Both:
 				int inlineWidth = metrics.stringWidth(geText)
 					+ metrics.stringWidth("  |  ")
@@ -1221,15 +1292,15 @@ public class PlayerExamineOverlay extends Overlay
 				if (inlineWidth <= footerWidth)
 				{
 					return FooterLayout.inline(
-						new FooterLine(geText, config.totalGeTextColor()),
-						new FooterLine(haText, config.totalHaTextColor()),
+						new FooterLine(geText, totalGeTextColor()),
+						new FooterLine(haText, totalHaTextColor()),
 						footerStartY,
 						lineHeight,
 						FOOTER_BOTTOM_MARGIN);
 				}
 				return FooterLayout.stacked(
-					new FooterLine(geText, config.totalGeTextColor()),
-					new FooterLine(haText, config.totalHaTextColor()),
+					new FooterLine(geText, totalGeTextColor()),
+					new FooterLine(haText, totalHaTextColor()),
 					footerStartY,
 					lineHeight,
 					FOOTER_LINE_GAP,
@@ -1289,7 +1360,7 @@ public class PlayerExamineOverlay extends Overlay
 
 		drawShadowText(graphics, left.getText(), x, baseline, left.getColor());
 		x += leftWidth;
-		drawShadowText(graphics, separator, x, baseline, config.combatTextColor());
+		drawShadowText(graphics, separator, x, baseline, combatTextColor());
 		x += separatorWidth;
 		drawShadowText(graphics, right.getText(), x, baseline, right.getColor());
 	}
@@ -1318,6 +1389,59 @@ public class PlayerExamineOverlay extends Overlay
 	private static String formatPrice(long value)
 	{
 		return String.format("%,d", value);
+	}
+
+	private String formatTotalValue(long value)
+	{
+		if (config.totalValueFormat() != PlayerExamineConfig.TotalValueFormat.Short)
+		{
+			return formatPrice(value);
+		}
+
+		return formatCompactValue(value);
+	}
+
+	private String formatItemValue(long value)
+	{
+		if (config.itemValueFormat() != PlayerExamineConfig.TotalValueFormat.Short)
+		{
+			return formatPrice(value);
+		}
+
+		return formatCompactValue(value);
+	}
+
+	private String formatCompactValue(long value)
+	{
+		long absoluteValue = Math.abs(value);
+		if (absoluteValue < 100_000)
+		{
+			return formatPrice(value);
+		}
+
+		if (absoluteValue < 10_000_000)
+		{
+			return formatShortValue(value, 1_000_000L, "m");
+		}
+
+		if (absoluteValue < 1_000_000_000)
+		{
+			return Math.round(value / 1_000_000.0) + "m";
+		}
+
+		return formatShortValue(value, 1_000_000_000L, "b");
+	}
+
+	private static String formatShortValue(long value, long divisor, String suffix)
+	{
+		double shortValue = value / (double) divisor;
+		String formatted = String.format(Locale.US, "%.1f", shortValue);
+		if (formatted.endsWith(".0"))
+		{
+			formatted = formatted.substring(0, formatted.length() - 2);
+		}
+
+		return formatted + suffix;
 	}
 
 	private static final class FooterLayout
@@ -1659,6 +1783,59 @@ public class PlayerExamineOverlay extends Overlay
 		}
 	}
 
+	private static final class ThemeColors
+	{
+		private final Color background;
+		private final Color border;
+		private final Color headerText;
+		private final Color subText;
+		private final Color closeText;
+		private final Color closeBorder;
+		private final Color closeFill;
+		private final Color closeHover;
+		private final Color slotFill;
+		private final Color slotEmpty;
+		private final Color slotBorder;
+		private final Color slotHover;
+		private final Color totalGe;
+		private final Color totalHa;
+		private final Color flair;
+
+		private ThemeColors(
+			Color background,
+			Color border,
+			Color headerText,
+			Color subText,
+			Color closeText,
+			Color closeBorder,
+			Color closeFill,
+			Color closeHover,
+			Color slotFill,
+			Color slotEmpty,
+			Color slotBorder,
+			Color slotHover,
+			Color totalGe,
+			Color totalHa,
+			Color flair)
+		{
+			this.background = background;
+			this.border = border;
+			this.headerText = headerText;
+			this.subText = subText;
+			this.closeText = closeText;
+			this.closeBorder = closeBorder;
+			this.closeFill = closeFill;
+			this.closeHover = closeHover;
+			this.slotFill = slotFill;
+			this.slotEmpty = slotEmpty;
+			this.slotBorder = slotBorder;
+			this.slotHover = slotHover;
+			this.totalGe = totalGe;
+			this.totalHa = totalHa;
+			this.flair = flair;
+		}
+	}
+
 	public String buildWikiUrl(EquipmentEntry entry)
 	{
 		return "https://oldschool.runescape.wiki/w/Special:Search?search="
@@ -1688,6 +1865,213 @@ public class PlayerExamineOverlay extends Overlay
 		return mouse != null && bounds != null
 			&& bounds.contains(mouse.getX(), mouse.getY())
 			&& rectangle.contains(mouse.getX() - bounds.x, mouse.getY() - bounds.y);
+	}
+
+	private Color overlayBackgroundColor()
+	{
+		ThemeColors theme = themeColors();
+		return theme == null ? config.overlayBackgroundColor() : theme.background;
+	}
+
+	private Color overlayBorderColor()
+	{
+		ThemeColors theme = themeColors();
+		return theme == null ? config.overlayBorderColor() : theme.border;
+	}
+
+	private Color usernameTextColor()
+	{
+		ThemeColors theme = themeColors();
+		return theme == null ? config.usernameTextColor() : theme.headerText;
+	}
+
+	private Color combatTextColor()
+	{
+		ThemeColors theme = themeColors();
+		return theme == null ? config.combatTextColor() : theme.subText;
+	}
+
+	private Color xTextColor()
+	{
+		ThemeColors theme = themeColors();
+		return theme == null ? config.xTextColor() : theme.closeText;
+	}
+
+	private Color xBorderColor()
+	{
+		ThemeColors theme = themeColors();
+		return theme == null ? config.xBorderColor() : theme.closeBorder;
+	}
+
+	private Color overlayCloseColor()
+	{
+		ThemeColors theme = themeColors();
+		return theme == null ? config.overlayCloseColor() : theme.closeFill;
+	}
+
+	private Color overlayCloseHoverColor()
+	{
+		ThemeColors theme = themeColors();
+		return theme == null ? config.overlayCloseHoverColor() : theme.closeHover;
+	}
+
+	private Color overlaySlotFillColor()
+	{
+		ThemeColors theme = themeColors();
+		return theme == null ? config.overlaySlotFillColor() : theme.slotFill;
+	}
+
+	private Color overlaySlotEmptyColor()
+	{
+		ThemeColors theme = themeColors();
+		return theme == null ? config.overlaySlotEmptyColor() : theme.slotEmpty;
+	}
+
+	private Color overlaySlotBorderColor()
+	{
+		ThemeColors theme = themeColors();
+		return theme == null ? config.overlaySlotBorderColor() : theme.slotBorder;
+	}
+
+	private Color overlaySlotHoverColor()
+	{
+		ThemeColors theme = themeColors();
+		return theme == null ? config.overlaySlotHoverColor() : theme.slotHover;
+	}
+
+	private Color totalGeTextColor()
+	{
+		ThemeColors theme = themeColors();
+		return theme == null ? config.totalGeTextColor() : theme.totalGe;
+	}
+
+	private Color totalHaTextColor()
+	{
+		ThemeColors theme = themeColors();
+		return theme == null ? config.totalHaTextColor() : theme.totalHa;
+	}
+
+	private Color openingFlairColor()
+	{
+		ThemeColors theme = themeColors();
+		return theme == null ? config.openingFlairColor() : theme.flair;
+	}
+
+	private ThemeColors themeColors()
+	{
+		PlayerExamineConfig.ThemePreset preset = config.themePreset();
+		if (preset == null || preset == PlayerExamineConfig.ThemePreset.Custom)
+		{
+			return null;
+		}
+
+		switch (preset)
+		{
+			case Classic:
+				return new ThemeColors(
+					new Color(31, 24, 17, 230),
+					new Color(118, 94, 60, 255),
+					new Color(235, 226, 193),
+					new Color(235, 226, 193),
+					new Color(200, 186, 140),
+					new Color(53, 42, 28),
+					new Color(44, 31, 22),
+					new Color(94, 30, 26),
+					new Color(41, 31, 23, 255),
+					new Color(24, 19, 14, 255),
+					new Color(111, 89, 56, 255),
+					new Color(150, 122, 76),
+					new Color(235, 226, 193),
+					new Color(200, 186, 140),
+					new Color(215, 125, 40, 220));
+			case Dark:
+				return new ThemeColors(
+					new Color(13, 15, 18, 235),
+					new Color(86, 96, 106, 255),
+					new Color(222, 229, 235),
+					new Color(185, 196, 205),
+					new Color(220, 226, 232),
+					new Color(45, 52, 60),
+					new Color(28, 32, 37),
+					new Color(80, 91, 103),
+					new Color(28, 32, 37, 255),
+					new Color(17, 20, 24, 255),
+					new Color(75, 85, 96, 255),
+					new Color(116, 131, 145),
+					new Color(222, 229, 235),
+					new Color(174, 184, 194),
+					new Color(116, 160, 190, 220));
+			case Gold:
+				return new ThemeColors(
+					new Color(28, 22, 10, 235),
+					new Color(172, 130, 38, 255),
+					new Color(255, 232, 154),
+					new Color(232, 201, 104),
+					new Color(255, 236, 164),
+					new Color(77, 57, 19),
+					new Color(61, 43, 15),
+					new Color(138, 84, 22),
+					new Color(53, 39, 16, 255),
+					new Color(28, 21, 10, 255),
+					new Color(147, 110, 37, 255),
+					new Color(211, 164, 59),
+					new Color(255, 232, 154),
+					new Color(232, 201, 104),
+					new Color(255, 190, 64, 230));
+			case Zaros:
+				return new ThemeColors(
+					new Color(19, 17, 31, 235),
+					new Color(101, 76, 160, 255),
+					new Color(230, 219, 255),
+					new Color(190, 176, 230),
+					new Color(230, 219, 255),
+					new Color(48, 38, 78),
+					new Color(36, 28, 58),
+					new Color(93, 49, 129),
+					new Color(34, 29, 53, 255),
+					new Color(22, 19, 36, 255),
+					new Color(88, 70, 133, 255),
+					new Color(133, 93, 188),
+					new Color(230, 219, 255),
+					new Color(190, 176, 230),
+					new Color(162, 105, 232, 225));
+			case Guthix:
+				return new ThemeColors(
+					new Color(14, 27, 20, 235),
+					new Color(70, 126, 81, 255),
+					new Color(219, 239, 207),
+					new Color(180, 218, 160),
+					new Color(219, 239, 207),
+					new Color(34, 68, 43),
+					new Color(25, 49, 33),
+					new Color(65, 117, 61),
+					new Color(27, 50, 35, 255),
+					new Color(17, 31, 23, 255),
+					new Color(64, 105, 67, 255),
+					new Color(102, 159, 90),
+					new Color(219, 239, 207),
+					new Color(180, 218, 160),
+					new Color(116, 210, 92, 225));
+			case Blood:
+				return new ThemeColors(
+					new Color(31, 12, 13, 235),
+					new Color(151, 48, 48, 255),
+					new Color(247, 220, 205),
+					new Color(226, 153, 137),
+					new Color(247, 220, 205),
+					new Color(78, 28, 29),
+					new Color(55, 20, 21),
+					new Color(138, 42, 42),
+					new Color(48, 24, 24, 255),
+					new Color(28, 14, 15, 255),
+					new Color(122, 42, 42, 255),
+					new Color(190, 64, 64),
+					new Color(247, 220, 205),
+					new Color(226, 153, 137),
+					new Color(230, 72, 72, 225));
+			default:
+				return null;
+		}
 	}
 
 	private void drawShadowText(Graphics2D graphics, String text, int x, int y, Color color)

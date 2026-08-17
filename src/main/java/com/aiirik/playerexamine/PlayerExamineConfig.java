@@ -1,6 +1,7 @@
 package com.aiirik.playerexamine;
 
 import java.awt.Color;
+import net.runelite.api.gameval.ItemID;
 import net.runelite.client.config.Alpha;
 import net.runelite.client.config.Config;
 import net.runelite.client.config.ConfigGroup;
@@ -17,6 +18,7 @@ public interface PlayerExamineConfig extends Config
 	String STATS_HOVER_TOOLTIP_SECTION = "statsHoverTooltip";
 	String LIST_STYLE_COLORS_SECTION = "listStyleColors";
 	String TOOLTIP_COLORS_SECTION = "tooltipColors";
+	String MISC_SECTION = "misc";
 
 	enum TotalValueMode
 	{
@@ -24,6 +26,23 @@ public interface PlayerExamineConfig extends Config
 		Ge,
 		HA,
 		Both
+	}
+
+	enum TotalValueFormat
+	{
+		Long,
+		Short
+	}
+
+	enum ThemePreset
+	{
+		Custom,
+		Classic,
+		Dark,
+		Gold,
+		Zaros,
+		Guthix,
+		Blood
 	}
 
 	enum OverlayMode
@@ -45,6 +64,52 @@ public interface PlayerExamineConfig extends Config
 		Off,
 		Visual,
 		List
+	}
+
+	enum AttackIcon
+	{
+		Default(-1, "Default"),
+		RuneScimitar(ItemID.RUNE_SCIMITAR, "Rune scimitar"),
+		GildedRuneScimitar(ItemID.RUNE_SCIMITAR_GOLD, "Gilded rune scimitar"),
+		DragonScimitar(ItemID.DRAGON_SCIMITAR, "Dragon scimitar"),
+		DragonScimitarOrnament(ItemID.DRAGON_SCIMITAR_ORNAMENT, "Dragon scimitar (or)"),
+		AbyssalWhip(ItemID.ABYSSAL_WHIP, "Abyssal whip"),
+		LavaWhip(ItemID.ABYSSAL_WHIP_LAVA, "Lava whip"),
+		IceWhip(ItemID.ABYSSAL_WHIP_ICE, "Ice whip"),
+		DragonClaws(ItemID.DRAGON_CLAWS, "Dragon claws"),
+		DragonClawsOrnament(ItemID.DRAGON_CLAWS_ORNAMENT, "Dragon claws (or)"),
+		AbyssalDagger(ItemID.ABYSSAL_DAGGER, "Abyssal dagger"),
+		ArmadylGodsword(ItemID.AGS, "Armadyl godsword"),
+		SaradominSword(ItemID.SARADOMIN_SWORD, "Saradomin sword"),
+		Arclight(ItemID.ARCLIGHT, "Arclight"),
+		BladeOfSaeldor(ItemID.BLADE_OF_SAELDOR, "Blade of saeldor"),
+		BladeOfSaeldorIthell(ItemID.BLADE_OF_SAELDOR_INFINITE_ITHELL, "Blade of saeldor (white)"),
+		BladeOfSaeldorCadarn(ItemID.BLADE_OF_SAELDOR_INFINITE_CADARN, "Blade of saeldor (green)"),
+		BladeOfSaeldorAmlodd(ItemID.BLADE_OF_SAELDOR_INFINITE_AMLODD, "Blade of saeldor (purple)"),
+		OsmumtensFang(ItemID.OSMUMTENS_FANG, "Osmumten's fang"),
+		Voidwaker(ItemID.VOIDWAKER, "Voidwaker"),
+		ScytheOfVitur(ItemID.SCYTHE_OF_VITUR, "Scythe of vitur"),
+		SoulreaperAxe(ItemID.SOULREAPER, "Soulreaper axe");
+
+		private final int itemId;
+		private final String name;
+
+		AttackIcon(int itemId, String name)
+		{
+			this.itemId = itemId;
+			this.name = name;
+		}
+
+		public int getItemId()
+		{
+			return itemId;
+		}
+
+		@Override
+		public String toString()
+		{
+			return name;
+		}
 	}
 
 	@ConfigSection(
@@ -94,11 +159,19 @@ public interface PlayerExamineConfig extends Config
 	)
 	String tooltipColorsSection = TOOLTIP_COLORS_SECTION;
 
+	@ConfigSection(
+		name = "Misc",
+		description = "Miscellaneous display settings",
+		position = 6,
+		closedByDefault = true
+	)
+	String miscSection = MISC_SECTION;
+
 	@ConfigItem(
 		keyName = "disableUpdateNotifications",
 		name = "Disable update notifications",
-		position = 7,
-		section = OVERLAY_SECTION,
+		position = 3,
+		section = MISC_SECTION,
 		description = "Hide the chatbox message shown when Player Examine updates"
 	)
 	default boolean disableUpdateNotifications()
@@ -119,9 +192,21 @@ public interface PlayerExamineConfig extends Config
 	}
 
 	@ConfigItem(
+		keyName = "themePreset",
+		name = "Theme preset",
+		position = 0,
+		section = OVERLAY_COLORS_SECTION,
+		description = "Use a preset overlay theme, or Custom to use the color settings below"
+	)
+	default ThemePreset themePreset()
+	{
+		return ThemePreset.Custom;
+	}
+
+	@ConfigItem(
 		keyName = "statsTabMode",
 		name = "Stats tab",
-		position = 2,
+		position = 3,
 		section = OVERLAY_SECTION,
 		description = "Choose whether to hide the stats tab or show it with icons or text"
 	)
@@ -133,7 +218,7 @@ public interface PlayerExamineConfig extends Config
 	@ConfigItem(
 		keyName = "overlayWidth",
 		name = "Overlay width",
-		position = 3,
+		position = 4,
 		section = OVERLAY_SECTION,
 		description = "Set the overlay width in pixels"
 	)
@@ -146,7 +231,7 @@ public interface PlayerExamineConfig extends Config
 	@ConfigItem(
 		keyName = "overlayTransparency",
 		name = "Overlay transparency",
-		position = 4,
+		position = 5,
 		section = OVERLAY_SECTION,
 		description = "Apply additional transparency to overlay backgrounds, borders, and slots"
 	)
@@ -159,7 +244,7 @@ public interface PlayerExamineConfig extends Config
 	@ConfigItem(
 		keyName = "overlayTextTransparency",
 		name = "Text transparency",
-		position = 5,
+		position = 6,
 		section = OVERLAY_SECTION,
 		description = "Apply additional transparency to overlay and tooltip text"
 	)
@@ -172,13 +257,25 @@ public interface PlayerExamineConfig extends Config
 	@ConfigItem(
 		keyName = "totalValueMode",
 		name = "Total value",
-		position = 6,
+		position = 7,
 		section = OVERLAY_SECTION,
 		description = "Show total equipment value in the overlay footer"
 	)
 	default TotalValueMode totalValueMode()
 	{
 		return TotalValueMode.Both;
+	}
+
+	@ConfigItem(
+		keyName = "totalValueFormat",
+		name = "Value format",
+		position = 8,
+		section = OVERLAY_SECTION,
+		description = "Choose long or shortened total value text in the overlay footer"
+	)
+	default TotalValueFormat totalValueFormat()
+	{
+		return TotalValueFormat.Long;
 	}
 
 	@ConfigItem(
@@ -232,7 +329,7 @@ public interface PlayerExamineConfig extends Config
 	@ConfigItem(
 		keyName = "showEquipmentBonuses",
 		name = "Show equipment bonuses",
-		position = 3,
+		position = 4,
 		section = ITEM_INFO_SECTION,
 		description = "Show weapon and armor bonuses in item hover tooltips"
 	)
@@ -244,13 +341,25 @@ public interface PlayerExamineConfig extends Config
 	@ConfigItem(
 		keyName = "compareEquipmentBonuses",
 		name = "Compare equipped item bonuses",
-		position = 4,
+		position = 5,
 		section = ITEM_INFO_SECTION,
 		description = "Show a bonus delta column against your currently equipped item"
 	)
 	default boolean compareEquipmentBonuses()
 	{
 		return true;
+	}
+
+	@ConfigItem(
+		keyName = "itemValueFormat",
+		name = "Value format",
+		position = 3,
+		section = ITEM_INFO_SECTION,
+		description = "Choose long or shortened GE and HA values in item hover tooltips"
+	)
+	default TotalValueFormat itemValueFormat()
+	{
+		return TotalValueFormat.Long;
 	}
 
 	@ConfigItem(
@@ -351,6 +460,42 @@ public interface PlayerExamineConfig extends Config
 	}
 
 	@ConfigItem(
+		keyName = "attackIcon",
+		name = "Attack icon",
+		position = 0,
+		section = MISC_SECTION,
+		description = "Choose a weapon icon to use for Attack in the visual stats tab"
+	)
+	default AttackIcon attackIcon()
+	{
+		return AttackIcon.Default;
+	}
+
+	@ConfigItem(
+		keyName = "rememberLastTab",
+		name = "Remember last tab",
+		position = 9,
+		section = OVERLAY_SECTION,
+		description = "Open new player examines on the last selected overlay tab"
+	)
+	default boolean rememberLastTab()
+	{
+		return false;
+	}
+
+	@ConfigItem(
+		keyName = "openingFlair",
+		name = "Opening flair",
+		position = 10,
+		section = OVERLAY_SECTION,
+		description = "Pulse the overlay border briefly after opening an examine"
+	)
+	default boolean openingFlair()
+	{
+		return false;
+	}
+
+	@ConfigItem(
 		keyName = "showSkillName",
 		name = "Show skill name",
 		position = 0,
@@ -402,7 +547,7 @@ public interface PlayerExamineConfig extends Config
 	@ConfigItem(
 		keyName = "overlayBackgroundColor",
 		name = "Background",
-		position = 0,
+		position = 1,
 		section = OVERLAY_COLORS_SECTION,
 		description = "Overlay background color"
 	)
@@ -415,7 +560,7 @@ public interface PlayerExamineConfig extends Config
 	@ConfigItem(
 		keyName = "overlayBorderColor",
 		name = "Border",
-		position = 1,
+		position = 2,
 		section = OVERLAY_COLORS_SECTION,
 		description = "Overlay border color"
 	)
@@ -427,7 +572,7 @@ public interface PlayerExamineConfig extends Config
 	@ConfigItem(
 		keyName = "overlayHeaderTextColor",
 		name = "Username",
-		position = 2,
+		position = 3,
 		section = OVERLAY_COLORS_SECTION,
 		description = "Username text color"
 	)
@@ -439,7 +584,7 @@ public interface PlayerExamineConfig extends Config
 	@ConfigItem(
 		keyName = "overlaySubTextColor",
 		name = "Combat",
-		position = 3,
+		position = 4,
 		section = OVERLAY_COLORS_SECTION,
 		description = "Combat text color"
 	)
@@ -451,7 +596,7 @@ public interface PlayerExamineConfig extends Config
 	@ConfigItem(
 		keyName = "overlayCloseTextColor",
 		name = "X close button",
-		position = 10,
+		position = 11,
 		section = OVERLAY_COLORS_SECTION,
 		description = "Text color for the close button X"
 	)
@@ -464,7 +609,7 @@ public interface PlayerExamineConfig extends Config
 	@ConfigItem(
 		keyName = "overlayCloseBorderColor",
 		name = "Close border",
-		position = 11,
+		position = 12,
 		section = OVERLAY_COLORS_SECTION,
 		description = "Border color for the close button"
 	)
@@ -477,7 +622,7 @@ public interface PlayerExamineConfig extends Config
 	@ConfigItem(
 		keyName = "overlayCloseColor",
 		name = "Close button",
-		position = 12,
+		position = 13,
 		section = OVERLAY_COLORS_SECTION,
 		description = "Background color for the close button"
 	)
@@ -489,7 +634,7 @@ public interface PlayerExamineConfig extends Config
 	@ConfigItem(
 		keyName = "overlayCloseHoverColor",
 		name = "Close hover",
-		position = 13,
+		position = 14,
 		section = OVERLAY_COLORS_SECTION,
 		description = "Hover background color for the close button"
 	)
@@ -502,7 +647,7 @@ public interface PlayerExamineConfig extends Config
 	@ConfigItem(
 		keyName = "overlaySlotFillColor",
 		name = "Slot filled",
-		position = 4,
+		position = 5,
 		section = OVERLAY_COLORS_SECTION,
 		description = "Equipment slot fill color when an item is equipped"
 	)
@@ -515,7 +660,7 @@ public interface PlayerExamineConfig extends Config
 	@ConfigItem(
 		keyName = "overlaySlotEmptyColor",
 		name = "Slot empty",
-		position = 5,
+		position = 6,
 		section = OVERLAY_COLORS_SECTION,
 		description = "Equipment slot fill color when empty"
 	)
@@ -528,7 +673,7 @@ public interface PlayerExamineConfig extends Config
 	@ConfigItem(
 		keyName = "overlaySlotBorderColor",
 		name = "Slot border",
-		position = 6,
+		position = 7,
 		section = OVERLAY_COLORS_SECTION,
 		description = "Equipment slot border color"
 	)
@@ -540,7 +685,7 @@ public interface PlayerExamineConfig extends Config
 	@ConfigItem(
 		keyName = "overlaySlotHoverColor",
 		name = "Slot hover",
-		position = 7,
+		position = 8,
 		section = OVERLAY_COLORS_SECTION,
 		description = "Equipment slot hover color"
 	)
@@ -552,7 +697,7 @@ public interface PlayerExamineConfig extends Config
 	@ConfigItem(
 		keyName = "totalGeTextColor",
 		name = "GE total",
-		position = 8,
+		position = 9,
 		section = OVERLAY_COLORS_SECTION,
 		description = "GE total value text color"
 	)
@@ -564,13 +709,26 @@ public interface PlayerExamineConfig extends Config
 	@ConfigItem(
 		keyName = "totalHaTextColor",
 		name = "HA total",
-		position = 9,
+		position = 10,
 		section = OVERLAY_COLORS_SECTION,
 		description = "HA total value text color"
 	)
 	default Color totalHaTextColor()
 	{
 		return new Color(200, 186, 140);
+	}
+
+	@Alpha
+	@ConfigItem(
+		keyName = "openingFlairColor",
+		name = "Opening flair",
+		position = 15,
+		section = OVERLAY_COLORS_SECTION,
+		description = "Opening flair color when using the Custom theme preset"
+	)
+	default Color openingFlairColor()
+	{
+		return new Color(215, 125, 40, 180);
 	}
 
 }

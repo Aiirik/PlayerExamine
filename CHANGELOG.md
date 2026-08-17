@@ -12,12 +12,16 @@ Initial release of Player Examine, including:
 - Supports an optional stats tab with visual or list-style display.
 - Shows hover tooltips for equipped items.
 - Supports GE, HA, and total value display.
+- Supports long or compact value formatting for item hover values and overlay footer totals.
 - Supports item bonus comparison against your currently equipped item.
-- Supports item wiki search on slot click.
+- Supports optional item wiki search on slot click.
 - Supports separate hover tooltip controls for item text, labels, values, and bonus deltas.
 - Shows stats hover tooltips with skill name, rank, experience, and remaining XP.
 - Uses a hiscore-backed stats tab with OSRS skill ordering.
-- Supports configurable overlay width, transparency, and text colors.
+- Uses OSRS skill icons in the visual stats tab, with optional weapon icon overrides for Attack.
+- Supports configurable overlay width, transparency, theme presets, opening flair, and text colors.
+- Supports remembering the last selected overlay tab.
+- Keeps the overlay open through short loading transitions such as tunnels and area changes.
 - Auto-expands list and hybrid overlays when item text would otherwise clip.
 - Lets you add the `(Members)` suffix in item names.
 - Includes configurable overlay colors, list-style colors, tooltip colors, and stats hover tooltip settings.

@@ -217,7 +217,14 @@ public class PlayerExaminePlugin extends Plugin
 		currentHiscoreData = null;
 		hiscoreLookupState = data == null ? HiscoreLookupState.IDLE : HiscoreLookupState.LOADING;
 		currentHiscoreName = data != null ? normalizeName(data.getName()) : null;
-		overlay.setSelectedTab(PlayerExamineOverlay.OverlayTab.EQUIPMENT);
+		if (!config.rememberLastTab() || data == null)
+		{
+			overlay.setSelectedTab(PlayerExamineOverlay.OverlayTab.EQUIPMENT);
+		}
+		if (data != null)
+		{
+			overlay.markOpened();
+		}
 	}
 
 	private void clearCurrentData()
