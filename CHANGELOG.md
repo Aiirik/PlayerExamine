@@ -6,7 +6,9 @@
 
 - Adds a new grey/white `Light` theme preset.
 - Renames the original light preset to `Light classic`.
+- Adds a `Custom color base` dropdown to use a preset as the starting point for a custom theme.
 - Adds configurable text shadow behavior with `Auto`, `On`, and `Off` modes.
+- Adds an option to use bold text throughout the overlay.
 - Adds custom overlay colors for stats labels, stats levels, active tabs, and inactive tabs.
 
 ### Fixes

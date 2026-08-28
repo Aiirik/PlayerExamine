@@ -8,6 +8,7 @@ import com.aiirik.playerexamine.model.PlayerHiscoreData;
 import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Dimension;
+import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.Graphics2D;
 import java.awt.Rectangle;
@@ -32,6 +33,7 @@ import net.runelite.client.game.ItemEquipmentStats;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.game.ItemStats;
 import net.runelite.client.game.SkillIconManager;
+import net.runelite.client.config.ConfigManager;
 import net.runelite.client.ui.FontManager;
 import net.runelite.client.ui.overlay.Overlay;
 import net.runelite.client.ui.overlay.OverlayLayer;
@@ -131,7 +133,12 @@ public class PlayerExamineOverlay extends Overlay
 
 		graphics.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 		graphics.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
-		graphics.setFont(FontManager.getRunescapeSmallFont());
+		Font overlayFont = FontManager.getRunescapeSmallFont();
+		if (config.boldOverlayText())
+		{
+			overlayFont = FontManager.getRunescapeBoldFont().deriveFont(Math.max(1.0f, overlayFont.getSize2D() - 3.0f));
+		}
+		graphics.setFont(overlayFont);
 
 		PlayerExamineConfig.OverlayMode overlayMode = config.overlayMode();
 		PlayerExamineConfig.StatsTabMode statsTabMode = config.statsTabMode();
@@ -2030,7 +2037,11 @@ public class PlayerExamineOverlay extends Overlay
 
 	private ThemeColors themeColors()
 	{
-		PlayerExamineConfig.ThemePreset preset = config.themePreset();
+		return themeColors(config.themePreset());
+	}
+
+	private static ThemeColors themeColors(PlayerExamineConfig.ThemePreset preset)
+	{
 		if (preset == null || preset == PlayerExamineConfig.ThemePreset.Custom)
 		{
 			return null;
@@ -2203,6 +2214,52 @@ public class PlayerExamineOverlay extends Overlay
 			default:
 				return null;
 		}
+	}
+
+	public void copyThemeColorsToCustom(ConfigManager configManager, PlayerExamineConfig.CustomColorStartingPoint startingPoint)
+	{
+		PlayerExamineConfig.ThemePreset preset = themePresetFromStartingPoint(startingPoint);
+		ThemeColors theme = themeColors(preset);
+		if (theme != null)
+		{
+			setColorConfig(configManager, "overlayBackgroundColor", theme.background);
+			setColorConfig(configManager, "overlayBorderColor", theme.border);
+			setColorConfig(configManager, "overlayHeaderTextColor", theme.headerText);
+			setColorConfig(configManager, "overlaySubTextColor", theme.subText);
+			setColorConfig(configManager, "overlayCloseTextColor", theme.closeText);
+			setColorConfig(configManager, "overlayCloseBorderColor", theme.closeBorder);
+			setColorConfig(configManager, "overlayCloseColor", theme.closeFill);
+			setColorConfig(configManager, "overlayCloseHoverColor", theme.closeHover);
+			setColorConfig(configManager, "overlaySlotFillColor", theme.slotFill);
+			setColorConfig(configManager, "overlaySlotEmptyColor", theme.slotEmpty);
+			setColorConfig(configManager, "overlaySlotBorderColor", theme.slotBorder);
+			setColorConfig(configManager, "overlaySlotHoverColor", theme.slotHover);
+			setColorConfig(configManager, "totalGeTextColor", theme.totalGe);
+			setColorConfig(configManager, "totalHaTextColor", theme.totalHa);
+			setColorConfig(configManager, "openingFlairColor", theme.flair);
+			setColorConfig(configManager, "valueHighlightColor", theme.valueHighlight);
+			setColorConfig(configManager, "activeTabTextColor", theme.headerText);
+			setColorConfig(configManager, "inactiveTabTextColor", theme.subText);
+			setColorConfig(configManager, "statsLabelTextColor", theme.subText);
+			setColorConfig(configManager, "statsLevelTextColor", theme.headerText);
+			configManager.setConfiguration(PlayerExamineConfig.CONFIG_GROUP, "themePreset", PlayerExamineConfig.ThemePreset.Custom.name());
+		}
+
+	}
+
+	private static PlayerExamineConfig.ThemePreset themePresetFromStartingPoint(PlayerExamineConfig.CustomColorStartingPoint startingPoint)
+	{
+		if (startingPoint == null)
+		{
+			return PlayerExamineConfig.ThemePreset.Custom;
+		}
+
+		return PlayerExamineConfig.ThemePreset.valueOf(startingPoint.name());
+	}
+
+	private static void setColorConfig(ConfigManager configManager, String keyName, Color color)
+	{
+		configManager.setConfiguration(PlayerExamineConfig.CONFIG_GROUP, keyName, Integer.toString(color.getRGB()));
 	}
 
 	private boolean textShadowEnabled()

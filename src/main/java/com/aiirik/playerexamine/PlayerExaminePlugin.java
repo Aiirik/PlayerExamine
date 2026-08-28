@@ -32,6 +32,9 @@ import net.runelite.api.events.MenuOptionClicked;
 import net.runelite.client.chat.ChatMessageManager;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
+import net.runelite.client.events.ConfigChanged;
+import net.runelite.client.events.ProfileChanged;
+import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.input.MouseAdapter;
 import net.runelite.client.input.MouseManager;
@@ -66,6 +69,9 @@ public class PlayerExaminePlugin extends Plugin
 
 	@Inject
 	private ConfigManager configManager;
+
+	@Inject
+	private EventBus eventBus;
 
 	@Inject
 	private Provider<MenuManager> menuManager;
@@ -149,6 +155,30 @@ public class PlayerExaminePlugin extends Plugin
 		{
 			setCurrentData(null);
 		}
+	}
+
+	@Subscribe
+	public void onConfigChanged(ConfigChanged event)
+	{
+		if (!PlayerExamineConfig.CONFIG_GROUP.equals(event.getGroup())
+			|| !"customColorStartingPoint".equals(event.getKey())
+			|| event.getNewValue() == null)
+		{
+			return;
+		}
+
+		PlayerExamineConfig.CustomColorStartingPoint startingPoint;
+		try
+		{
+			startingPoint = PlayerExamineConfig.CustomColorStartingPoint.valueOf(event.getNewValue());
+		}
+		catch (IllegalArgumentException ex)
+		{
+			return;
+		}
+
+		overlay.copyThemeColorsToCustom(configManager, startingPoint);
+		eventBus.post(new ProfileChanged());
 	}
 
 	private static boolean shouldClearCurrentData(GameState gameState)

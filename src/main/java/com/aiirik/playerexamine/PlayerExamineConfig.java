@@ -9,9 +9,10 @@ import net.runelite.client.config.ConfigItem;
 import net.runelite.client.config.ConfigSection;
 import net.runelite.client.config.Range;
 
-@ConfigGroup("player-examine")
+@ConfigGroup(PlayerExamineConfig.CONFIG_GROUP)
 public interface PlayerExamineConfig extends Config
 {
+	String CONFIG_GROUP = "player-examine";
 	String OVERLAY_SECTION = "overlay";
 	String OVERLAY_COLORS_SECTION = "overlayColors";
 	String ITEM_INFO_SECTION = "itemInfo";
@@ -60,6 +61,26 @@ public interface PlayerExamineConfig extends Config
 		Auto,
 		On,
 		Off
+	}
+
+	enum CustomColorStartingPoint
+	{
+		Classic,
+		LightClassic
+		{
+			@Override
+			public String toString()
+			{
+				return "Light classic";
+			}
+		},
+		Light,
+		Dark,
+		Gold,
+		Zaros,
+		Guthix,
+		Saradomin,
+		Blood
 	}
 
 	enum DefaultTab
@@ -332,6 +353,30 @@ public interface PlayerExamineConfig extends Config
 	default TextShadowMode textShadowMode()
 	{
 		return TextShadowMode.Auto;
+	}
+
+	@ConfigItem(
+		keyName = "boldOverlayText",
+		name = "Bold text",
+		position = 93,
+		section = OVERLAY_COLORS_SECTION,
+		description = "Use bold text throughout the overlay"
+	)
+	default boolean boldOverlayText()
+	{
+		return false;
+	}
+
+	@ConfigItem(
+		keyName = "customColorStartingPoint",
+		name = "Custom color base",
+		position = 1,
+		section = OVERLAY_COLORS_SECTION,
+		description = "Copy a preset theme's colors into Custom as a starting point"
+	)
+	default CustomColorStartingPoint customColorStartingPoint()
+	{
+		return CustomColorStartingPoint.Classic;
 	}
 
 	@ConfigItem(
@@ -627,7 +672,7 @@ public interface PlayerExamineConfig extends Config
 	@ConfigItem(
 		keyName = "overlayBackgroundColor",
 		name = "Background",
-		position = 1,
+		position = 2,
 		section = OVERLAY_COLORS_SECTION,
 		description = "Overlay background color"
 	)
@@ -640,7 +685,7 @@ public interface PlayerExamineConfig extends Config
 	@ConfigItem(
 		keyName = "overlayBorderColor",
 		name = "Border",
-		position = 2,
+		position = 3,
 		section = OVERLAY_COLORS_SECTION,
 		description = "Overlay border color"
 	)
@@ -652,7 +697,7 @@ public interface PlayerExamineConfig extends Config
 	@ConfigItem(
 		keyName = "overlayHeaderTextColor",
 		name = "Username",
-		position = 3,
+		position = 4,
 		section = OVERLAY_COLORS_SECTION,
 		description = "Username text color"
 	)
@@ -664,7 +709,7 @@ public interface PlayerExamineConfig extends Config
 	@ConfigItem(
 		keyName = "overlaySubTextColor",
 		name = "Combat",
-		position = 4,
+		position = 5,
 		section = OVERLAY_COLORS_SECTION,
 		description = "Combat text color"
 	)
@@ -676,7 +721,7 @@ public interface PlayerExamineConfig extends Config
 	@ConfigItem(
 		keyName = "activeTabTextColor",
 		name = "Active tab",
-		position = 17,
+		position = 18,
 		section = OVERLAY_COLORS_SECTION,
 		description = "Selected tab text color"
 	)
@@ -688,7 +733,7 @@ public interface PlayerExamineConfig extends Config
 	@ConfigItem(
 		keyName = "inactiveTabTextColor",
 		name = "Inactive tab",
-		position = 18,
+		position = 19,
 		section = OVERLAY_COLORS_SECTION,
 		description = "Unselected tab text color"
 	)
@@ -700,7 +745,7 @@ public interface PlayerExamineConfig extends Config
 	@ConfigItem(
 		keyName = "statsLabelTextColor",
 		name = "Stats label",
-		position = 19,
+		position = 20,
 		section = OVERLAY_COLORS_SECTION,
 		description = "Stats tab skill label text color"
 	)
@@ -712,7 +757,7 @@ public interface PlayerExamineConfig extends Config
 	@ConfigItem(
 		keyName = "statsLevelTextColor",
 		name = "Stats level",
-		position = 20,
+		position = 21,
 		section = OVERLAY_COLORS_SECTION,
 		description = "Stats tab level text color"
 	)
@@ -724,7 +769,7 @@ public interface PlayerExamineConfig extends Config
 	@ConfigItem(
 		keyName = "overlayCloseTextColor",
 		name = "X close button",
-		position = 11,
+		position = 12,
 		section = OVERLAY_COLORS_SECTION,
 		description = "Text color for the close button X"
 	)
@@ -737,7 +782,7 @@ public interface PlayerExamineConfig extends Config
 	@ConfigItem(
 		keyName = "overlayCloseBorderColor",
 		name = "Close border",
-		position = 12,
+		position = 13,
 		section = OVERLAY_COLORS_SECTION,
 		description = "Border color for the close button"
 	)
@@ -750,7 +795,7 @@ public interface PlayerExamineConfig extends Config
 	@ConfigItem(
 		keyName = "overlayCloseColor",
 		name = "Close button",
-		position = 13,
+		position = 14,
 		section = OVERLAY_COLORS_SECTION,
 		description = "Background color for the close button"
 	)
@@ -762,7 +807,7 @@ public interface PlayerExamineConfig extends Config
 	@ConfigItem(
 		keyName = "overlayCloseHoverColor",
 		name = "Close hover",
-		position = 14,
+		position = 15,
 		section = OVERLAY_COLORS_SECTION,
 		description = "Hover background color for the close button"
 	)
@@ -775,7 +820,7 @@ public interface PlayerExamineConfig extends Config
 	@ConfigItem(
 		keyName = "overlaySlotFillColor",
 		name = "Slot filled",
-		position = 5,
+		position = 6,
 		section = OVERLAY_COLORS_SECTION,
 		description = "Equipment slot fill color when an item is equipped"
 	)
@@ -788,7 +833,7 @@ public interface PlayerExamineConfig extends Config
 	@ConfigItem(
 		keyName = "overlaySlotEmptyColor",
 		name = "Slot empty",
-		position = 6,
+		position = 7,
 		section = OVERLAY_COLORS_SECTION,
 		description = "Equipment slot fill color when empty"
 	)
@@ -801,7 +846,7 @@ public interface PlayerExamineConfig extends Config
 	@ConfigItem(
 		keyName = "overlaySlotBorderColor",
 		name = "Slot border",
-		position = 7,
+		position = 8,
 		section = OVERLAY_COLORS_SECTION,
 		description = "Equipment slot border color"
 	)
@@ -813,7 +858,7 @@ public interface PlayerExamineConfig extends Config
 	@ConfigItem(
 		keyName = "overlaySlotHoverColor",
 		name = "Slot hover",
-		position = 8,
+		position = 9,
 		section = OVERLAY_COLORS_SECTION,
 		description = "Equipment slot hover color"
 	)
@@ -825,7 +870,7 @@ public interface PlayerExamineConfig extends Config
 	@ConfigItem(
 		keyName = "totalGeTextColor",
 		name = "GE total",
-		position = 9,
+		position = 10,
 		section = OVERLAY_COLORS_SECTION,
 		description = "GE total value text color"
 	)
@@ -837,7 +882,7 @@ public interface PlayerExamineConfig extends Config
 	@ConfigItem(
 		keyName = "totalHaTextColor",
 		name = "HA total",
-		position = 10,
+		position = 11,
 		section = OVERLAY_COLORS_SECTION,
 		description = "HA total value text color"
 	)
@@ -850,7 +895,7 @@ public interface PlayerExamineConfig extends Config
 	@ConfigItem(
 		keyName = "openingFlairColor",
 		name = "Opening glow",
-		position = 15,
+		position = 16,
 		section = OVERLAY_COLORS_SECTION,
 		description = "Opening glow color when using the Custom theme preset"
 	)
@@ -863,7 +908,7 @@ public interface PlayerExamineConfig extends Config
 	@ConfigItem(
 		keyName = "valueHighlightColor",
 		name = "Value highlight",
-		position = 16,
+		position = 17,
 		section = OVERLAY_COLORS_SECTION,
 		description = "Equipment value highlight color when using the Custom theme preset"
 	)
