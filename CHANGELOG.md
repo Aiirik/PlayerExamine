@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.1.0 - 28 Aug 2026
+
+### Features
+
+- Adds a new grey/white `Light` theme preset.
+- Renames the original light preset to `Light classic`.
+- Adds configurable text shadow behavior with `Auto`, `On`, and `Off` modes.
+- Adds custom overlay colors for stats labels, stats levels, active tabs, and inactive tabs.
+
+### Fixes
+
+- Fixes doubled-looking overlay text on light backgrounds by disabling text shadows automatically for light themes.
+- Fixes stats tab level colors not following custom overlay colors or theme presets.
+- Fixes tab text being tied to the combat text color.
+
+
 ## 1.0.0 - 11 Aug 2026
 
 Initial release of Player Examine, including:

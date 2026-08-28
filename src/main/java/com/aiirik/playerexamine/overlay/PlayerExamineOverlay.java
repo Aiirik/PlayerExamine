@@ -293,7 +293,7 @@ public class PlayerExamineOverlay extends Overlay
 		graphics.setColor(applyOverlayTransparency(selected ? overlaySlotHoverColor() : overlaySlotBorderColor()));
 		graphics.drawRect(bounds.x, bounds.y, bounds.width, bounds.height);
 		Rectangle textBounds = new Rectangle(bounds.x, bounds.y + 2, bounds.width, Math.max(0, bounds.height - 2));
-		drawCenteredShadowText(graphics, text, textBounds, selected ? config.tooltipItemTextColor() : combatTextColor());
+		drawCenteredShadowText(graphics, text, textBounds, selected ? activeTabTextColor() : inactiveTabTextColor());
 	}
 
 	private void drawOpeningFlair(Graphics2D graphics, int frameWidth, int frameHeight)
@@ -452,7 +452,7 @@ public class PlayerExamineOverlay extends Overlay
 			drawStatCell(graphics, cell, layout.isShowIcons());
 		}
 
-		drawCenteredShadowText(graphics, layout.getTotalLevelText(), new Rectangle(0, layout.getTotalLevelY(), frameWidth, metrics.getHeight()), config.tooltipItemTextColor());
+		drawCenteredShadowText(graphics, layout.getTotalLevelText(), new Rectangle(0, layout.getTotalLevelY(), frameWidth, metrics.getHeight()), statsLevelTextColor());
 	}
 
 	private void drawStatCell(Graphics2D graphics, StatCell cell, boolean showIcons)
@@ -481,7 +481,7 @@ public class PlayerExamineOverlay extends Overlay
 
 			int valueX = groupX + STATS_ICON_SIZE + STATS_ICON_GAP;
 			int valueBaseline = groupY + ((groupHeight - metrics.getHeight()) / 2) + metrics.getAscent();
-			drawShadowText(graphics, value, valueX, valueBaseline, config.tooltipValueTextColor());
+			drawShadowText(graphics, value, valueX, valueBaseline, statsLevelTextColor());
 			return;
 		}
 
@@ -490,8 +490,8 @@ public class PlayerExamineOverlay extends Overlay
 		int labelWidth = metrics.stringWidth(label);
 		int availableValueWidth = Math.max(0, bounds.width - labelWidth);
 		String fittedValue = fitText(graphics, value, availableValueWidth);
-		drawShadowText(graphics, label, bounds.x, baseline, config.tooltipOtherTextColor());
-		drawShadowText(graphics, fittedValue, bounds.x + labelWidth, baseline, config.tooltipValueTextColor());
+		drawShadowText(graphics, label, bounds.x, baseline, statsLabelTextColor());
+		drawShadowText(graphics, fittedValue, bounds.x + labelWidth, baseline, statsLevelTextColor());
 	}
 
 	private int measureStatCellWidth(FontMetrics metrics, PlayerHiscoreData.Skill skill, int level, boolean showIcons)
@@ -1932,6 +1932,30 @@ public class PlayerExamineOverlay extends Overlay
 		return theme == null ? config.combatTextColor() : theme.subText;
 	}
 
+	private Color activeTabTextColor()
+	{
+		ThemeColors theme = themeColors();
+		return theme == null ? config.activeTabTextColor() : theme.headerText;
+	}
+
+	private Color inactiveTabTextColor()
+	{
+		ThemeColors theme = themeColors();
+		return theme == null ? config.inactiveTabTextColor() : theme.subText;
+	}
+
+	private Color statsLabelTextColor()
+	{
+		ThemeColors theme = themeColors();
+		return theme == null ? config.statsLabelTextColor() : theme.subText;
+	}
+
+	private Color statsLevelTextColor()
+	{
+		ThemeColors theme = themeColors();
+		return theme == null ? config.statsLevelTextColor() : theme.headerText;
+	}
+
 	private Color xTextColor()
 	{
 		ThemeColors theme = themeColors();
@@ -2032,7 +2056,7 @@ public class PlayerExamineOverlay extends Overlay
 					new Color(200, 186, 140),
 					new Color(215, 125, 40, 220),
 					new Color(255, 190, 64, 210));
-			case Light:
+			case LightClassic:
 				return new ThemeColors(
 					new Color(226, 214, 188, 235),
 					new Color(116, 95, 60, 255),
@@ -2050,6 +2074,24 @@ public class PlayerExamineOverlay extends Overlay
 					new Color(78, 62, 39),
 					new Color(202, 139, 50, 220),
 					new Color(218, 154, 58, 210));
+			case Light:
+				return new ThemeColors(
+					new Color(238, 241, 244, 238),
+					new Color(136, 146, 156, 255),
+					new Color(32, 38, 44),
+					new Color(80, 88, 96),
+					new Color(34, 40, 46),
+					new Color(144, 152, 160),
+					new Color(222, 226, 230),
+					new Color(198, 207, 216),
+					new Color(224, 228, 232, 255),
+					new Color(210, 215, 220, 255),
+					new Color(146, 156, 166, 255),
+					new Color(116, 131, 145),
+					new Color(32, 38, 44),
+					new Color(80, 88, 96),
+					new Color(116, 160, 190, 220),
+					new Color(128, 190, 220, 210));
 			case Dark:
 				return new ThemeColors(
 					new Color(13, 15, 18, 235),
@@ -2163,10 +2205,35 @@ public class PlayerExamineOverlay extends Overlay
 		}
 	}
 
+	private boolean textShadowEnabled()
+	{
+		PlayerExamineConfig.TextShadowMode mode = config.textShadowMode();
+		if (mode == PlayerExamineConfig.TextShadowMode.On)
+		{
+			return true;
+		}
+		if (mode == PlayerExamineConfig.TextShadowMode.Off)
+		{
+			return false;
+		}
+
+		Color background = overlayBackgroundColor();
+		if (background == null)
+		{
+			return true;
+		}
+
+		int luminance = (background.getRed() * 299 + background.getGreen() * 587 + background.getBlue() * 114) / 1000;
+		return luminance < 140;
+	}
+
 	private void drawShadowText(Graphics2D graphics, String text, int x, int y, Color color)
 	{
-		graphics.setColor(applyTextTransparency(new Color(16, 12, 8)));
-		graphics.drawString(text, x + 1, y + 1);
+		if (textShadowEnabled())
+		{
+			graphics.setColor(applyTextTransparency(new Color(16, 12, 8)));
+			graphics.drawString(text, x + 1, y + 1);
+		}
 		graphics.setColor(applyTextTransparency(color));
 		graphics.drawString(text, x, y);
 	}
@@ -2179,13 +2246,16 @@ public class PlayerExamineOverlay extends Overlay
 		drawShadowText(graphics, text, x, y, color);
 	}
 
-	private static void drawCenteredOpaqueShadowText(Graphics2D graphics, String text, Rectangle bounds, Color color)
+	private void drawCenteredOpaqueShadowText(Graphics2D graphics, String text, Rectangle bounds, Color color)
 	{
 		FontMetrics metrics = graphics.getFontMetrics();
 		int x = bounds.x + (bounds.width - metrics.stringWidth(text)) / 2;
 		int y = bounds.y + ((bounds.height - metrics.getHeight()) / 2) + metrics.getAscent();
-		graphics.setColor(new Color(16, 12, 8));
-		graphics.drawString(text, x + 1, y + 1);
+		if (textShadowEnabled())
+		{
+			graphics.setColor(new Color(16, 12, 8));
+			graphics.drawString(text, x + 1, y + 1);
+		}
 		graphics.setColor(color);
 		graphics.drawString(text, x, y);
 	}

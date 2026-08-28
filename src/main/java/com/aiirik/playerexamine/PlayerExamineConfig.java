@@ -38,6 +38,14 @@ public interface PlayerExamineConfig extends Config
 	{
 		Custom,
 		Classic,
+		LightClassic
+		{
+			@Override
+			public String toString()
+			{
+				return "Light classic";
+			}
+		},
 		Light,
 		Dark,
 		Gold,
@@ -45,6 +53,13 @@ public interface PlayerExamineConfig extends Config
 		Guthix,
 		Saradomin,
 		Blood
+	}
+
+	enum TextShadowMode
+	{
+		Auto,
+		On,
+		Off
 	}
 
 	enum DefaultTab
@@ -284,7 +299,7 @@ public interface PlayerExamineConfig extends Config
 	@ConfigItem(
 		keyName = "overlayTransparency",
 		name = "Overlay transparency",
-		position = 17,
+		position = 90,
 		section = OVERLAY_COLORS_SECTION,
 		description = "Apply additional transparency to overlay backgrounds, borders, and slots"
 	)
@@ -297,7 +312,7 @@ public interface PlayerExamineConfig extends Config
 	@ConfigItem(
 		keyName = "overlayTextTransparency",
 		name = "Text transparency",
-		position = 18,
+		position = 91,
 		section = OVERLAY_COLORS_SECTION,
 		description = "Apply additional transparency to overlay and tooltip text"
 	)
@@ -305,6 +320,18 @@ public interface PlayerExamineConfig extends Config
 	default int overlayTextTransparency()
 	{
 		return 0;
+	}
+
+	@ConfigItem(
+		keyName = "textShadowMode",
+		name = "Text shadow",
+		position = 92,
+		section = OVERLAY_COLORS_SECTION,
+		description = "Choose whether overlay text uses a drop shadow"
+	)
+	default TextShadowMode textShadowMode()
+	{
+		return TextShadowMode.Auto;
 	}
 
 	@ConfigItem(
@@ -539,7 +566,7 @@ public interface PlayerExamineConfig extends Config
 	@ConfigItem(
 		keyName = "openingFlair",
 		name = "Opening glow",
-		position = 19,
+		position = 93,
 		section = OVERLAY_COLORS_SECTION,
 		description = "Show a brief glow around the overlay after opening an examine"
 	)
@@ -644,6 +671,54 @@ public interface PlayerExamineConfig extends Config
 	default Color combatTextColor()
 	{
 		return new Color(235, 226, 193);
+	}
+
+	@ConfigItem(
+		keyName = "activeTabTextColor",
+		name = "Active tab",
+		position = 17,
+		section = OVERLAY_COLORS_SECTION,
+		description = "Selected tab text color"
+	)
+	default Color activeTabTextColor()
+	{
+		return new Color(235, 226, 193);
+	}
+
+	@ConfigItem(
+		keyName = "inactiveTabTextColor",
+		name = "Inactive tab",
+		position = 18,
+		section = OVERLAY_COLORS_SECTION,
+		description = "Unselected tab text color"
+	)
+	default Color inactiveTabTextColor()
+	{
+		return new Color(200, 186, 140);
+	}
+
+	@ConfigItem(
+		keyName = "statsLabelTextColor",
+		name = "Stats label",
+		position = 19,
+		section = OVERLAY_COLORS_SECTION,
+		description = "Stats tab skill label text color"
+	)
+	default Color statsLabelTextColor()
+	{
+		return new Color(235, 226, 193);
+	}
+
+	@ConfigItem(
+		keyName = "statsLevelTextColor",
+		name = "Stats level",
+		position = 20,
+		section = OVERLAY_COLORS_SECTION,
+		description = "Stats tab level text color"
+	)
+	default Color statsLevelTextColor()
+	{
+		return new Color(245, 240, 228);
 	}
 
 	@ConfigItem(
