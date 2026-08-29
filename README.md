@@ -44,3 +44,7 @@ Player Examine turns player examines into a compact, configurable overlay for ch
     </td>
   </tr>
 </table>
+
+## Change log
+
+ Click to view the <a href="https://github.com/Aiirik/PlayerExamine/blob/master/CHANGELOG.md">CHANGELOG</a>
