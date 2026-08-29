@@ -1467,52 +1467,77 @@ public class PlayerExamineOverlay extends Overlay
 
 	private String formatTotalValue(long value)
 	{
-		if (config.totalValueFormat() != PlayerExamineConfig.TotalValueFormat.Short)
-		{
-			return formatPrice(value);
-		}
-
-		return formatCompactValue(value);
+		return formatValue(value, config.totalValueFormat());
 	}
 
 	private String formatItemValue(long value)
 	{
-		if (config.itemValueFormat() != PlayerExamineConfig.TotalValueFormat.Short)
+		return formatValue(value, config.itemValueFormat());
+	}
+
+	private String formatValue(long value, PlayerExamineConfig.TotalValueFormat format)
+	{
+		switch (format)
 		{
-			return formatPrice(value);
+			case Short:
+				return formatCompactValue(value);
+			case Both:
+				return formatCombinedValue(value);
+			case Long:
+			default:
+				return formatPrice(value);
+		}
+	}
+
+	private String formatCombinedValue(long value)
+	{
+		String longValue = formatPrice(value);
+		String compactValue = formatCompactValue(value);
+		if (longValue.equals(compactValue))
+		{
+			return longValue;
 		}
 
-		return formatCompactValue(value);
+		return longValue + " (" + compactValue + ")";
 	}
 
 	private String formatCompactValue(long value)
 	{
 		long absoluteValue = Math.abs(value);
-		if (absoluteValue < 100_000)
+		if (absoluteValue < 10_000)
 		{
 			return formatPrice(value);
 		}
 
-		if (absoluteValue < 10_000_000)
+		if (absoluteValue < 100_000)
 		{
-			return formatShortValue(value, 1_000_000L, "m");
+			return formatShortValue(value, 1_000L, "k", 1);
+		}
+
+		if (absoluteValue < 1_000_000)
+		{
+			return (value / 1_000L) + "k";
 		}
 
 		if (absoluteValue < 1_000_000_000)
 		{
-			return Math.round(value / 1_000_000.0) + "m";
+			return formatShortValue(value, 1_000_000L, "m", 2);
 		}
 
-		return formatShortValue(value, 1_000_000_000L, "b");
+		return formatShortValue(value, 1_000_000_000L, "b", 2);
 	}
 
-	private static String formatShortValue(long value, long divisor, String suffix)
+	private static String formatShortValue(long value, long divisor, String suffix, int decimalPlaces)
 	{
 		double shortValue = value / (double) divisor;
-		String formatted = String.format(Locale.US, "%.1f", shortValue);
-		if (formatted.endsWith(".0"))
+		String formatted = String.format(Locale.US, "%." + decimalPlaces + "f", shortValue);
+		while (formatted.contains(".") && formatted.endsWith("0"))
 		{
-			formatted = formatted.substring(0, formatted.length() - 2);
+			formatted = formatted.substring(0, formatted.length() - 1);
+		}
+		if (formatted.endsWith("."))
+		{
+			formatted = formatted.substring(0, formatted.length() - 1);
 		}
 
 		return formatted + suffix;

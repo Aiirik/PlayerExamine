@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.1.2 - 29 Aug 2026
+
+### Features
+
+- Adds a `Both` value format for overlay footer totals and item hover tooltip values, showing long and compact values together, such as `1,200,000 (1.2m)`.
+
+### Fixes
+
+- Improves compact value formatting to use RuneScape-style `k`, `m`, and `b` suffixes, such as `90.7k`, `254k`, `1.25m`, and `237m`.
+- Hides the duplicate compact value in `Both` mode when a value cannot be shortened, such as `500`.
+
 ## 1.1.1 - 28 Aug 2026
 
 ### Fixes

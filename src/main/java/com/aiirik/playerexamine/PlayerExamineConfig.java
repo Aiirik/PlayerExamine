@@ -32,7 +32,8 @@ public interface PlayerExamineConfig extends Config
 	enum TotalValueFormat
 	{
 		Long,
-		Short
+		Short,
+		Both
 	}
 
 	enum ThemePreset
@@ -420,7 +421,7 @@ public interface PlayerExamineConfig extends Config
 		name = "Value format",
 		position = 8,
 		section = OVERLAY_SECTION,
-		description = "Choose long or shortened total value text in the overlay footer"
+		description = "Choose long, shortened, or combined total value text in the overlay footer"
 	)
 	default TotalValueFormat totalValueFormat()
 	{
@@ -516,7 +517,7 @@ public interface PlayerExamineConfig extends Config
 		name = "Value format",
 		position = 3,
 		section = ITEM_INFO_SECTION,
-		description = "Choose long or shortened GE and HA values in item hover tooltips"
+		description = "Choose long, shortened, or combined GE and HA values in item hover tooltips"
 	)
 	default TotalValueFormat itemValueFormat()
 	{
