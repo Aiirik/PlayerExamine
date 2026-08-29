@@ -7,6 +7,7 @@
 - Adds a new grey/white `Light` theme preset.
 - Renames the original light preset to `Light classic`.
 - Adds a `Custom color base` dropdown to use a preset as the starting point for a custom theme.
+- Adds persistent `Custom 1`, `Custom 2`, and `Custom 3` color bases for saving custom theme variants.
 - Adds configurable text shadow behavior with `Auto`, `On`, and `Off` modes.
 - Adds an option to use bold text throughout the overlay.
 - Adds options for item and stats tooltip backgrounds and label/value text to match the selected theme or custom overlay colors, with separate tooltip transparency controls.

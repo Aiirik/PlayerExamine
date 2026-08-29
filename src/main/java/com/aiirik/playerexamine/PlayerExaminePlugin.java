@@ -160,9 +160,18 @@ public class PlayerExaminePlugin extends Plugin
 	@Subscribe
 	public void onConfigChanged(ConfigChanged event)
 	{
-		if (!PlayerExamineConfig.CONFIG_GROUP.equals(event.getGroup())
-			|| !"customColorStartingPoint".equals(event.getKey())
-			|| event.getNewValue() == null)
+		if (!PlayerExamineConfig.CONFIG_GROUP.equals(event.getGroup()))
+		{
+			return;
+		}
+
+		if (!"customColorStartingPoint".equals(event.getKey()))
+		{
+			overlay.saveCustomPresetColor(configManager, event.getKey());
+			return;
+		}
+
+		if (event.getNewValue() == null)
 		{
 			return;
 		}

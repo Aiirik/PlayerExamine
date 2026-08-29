@@ -84,6 +84,28 @@ public class PlayerExamineOverlay extends Overlay
 	private static final int HYBRID_ICON_SIZE = 20;
 	private static final int HYBRID_ICON_GAP = 6;
 	private static final int HYBRID_ROW_PADDING_Y = 4;
+	private static final String CUSTOM_PRESET_PREFIX = "customPreset.";
+	private static final String[] CUSTOM_COLOR_KEYS = {
+		"overlayBackgroundColor",
+		"overlayBorderColor",
+		"overlayHeaderTextColor",
+		"overlaySubTextColor",
+		"overlayCloseTextColor",
+		"overlayCloseColor",
+		"overlayCloseHoverColor",
+		"overlaySlotFillColor",
+		"overlaySlotEmptyColor",
+		"overlaySlotBorderColor",
+		"overlaySlotHoverColor",
+		"totalGeTextColor",
+		"totalHaTextColor",
+		"openingFlairColor",
+		"valueHighlightColor",
+		"activeTabTextColor",
+		"inactiveTabTextColor",
+		"statsLabelTextColor",
+		"statsLevelTextColor"
+	};
 	private final PlayerExaminePlugin plugin;
 	private final PlayerExamineConfig config;
 	private final Client client;
@@ -182,7 +204,7 @@ public class PlayerExamineOverlay extends Overlay
 		{
 			contentLayout = contentLayout.withVerticalOffset(calculateEquipmentContentOffset(contentLayout, footerLayout, frameHeight, contentTop));
 		}
-		Rectangle closeButton = new Rectangle(frameWidth - 20, 2, 16, 14);
+		Rectangle closeButton = new Rectangle(frameWidth - TITLE_BAR_HEIGHT, 0, TITLE_BAR_HEIGHT, TITLE_BAR_HEIGHT);
 
 		drawFrame(graphics, data, closeButton, frameHeight, frameWidth);
 		if (showStatsTab)
@@ -232,19 +254,12 @@ public class PlayerExamineOverlay extends Overlay
 
 	private void drawFrame(Graphics2D graphics, PlayerExamineData data, Rectangle closeButton, int frameHeight, int frameWidth)
 	{
-		graphics.setColor(applyOverlayTransparency(overlayBorderColor()));
-		graphics.drawRect(0, 0, frameWidth - 1, frameHeight - 1);
-
 		Color backgroundColor = overlayBackgroundColor();
 		if (backgroundColor.getAlpha() > 0)
 		{
 			graphics.setColor(applyOverlayTransparency(backgroundColor));
 			graphics.fillRect(1, 1, frameWidth - 2, frameHeight - 2);
 		}
-
-		graphics.setColor(applyOverlayTransparency(overlayBorderColor()));
-		graphics.setStroke(new BasicStroke(1f));
-		graphics.drawLine(2, TITLE_BAR_HEIGHT - 1, frameWidth - 3, TITLE_BAR_HEIGHT - 1);
 
 		FontMetrics metrics = graphics.getFontMetrics();
 		int titleBaseline = ((TITLE_BAR_HEIGHT - metrics.getHeight()) / 2) + metrics.getAscent() + 1;
@@ -263,16 +278,15 @@ public class PlayerExamineOverlay extends Overlay
 		{
 			closeFill = applyOverlayTransparency(closeFill);
 		}
+		Rectangle closeInnerBounds = new Rectangle(closeButton.x + 1, closeButton.y + 1, closeButton.width - 2, closeButton.height - 2);
 		graphics.setColor(closeFill);
-		graphics.fillRect(closeButton.x, closeButton.y, closeButton.width, closeButton.height);
-		Color closeBorder = xBorderColor();
-		if (config.overlayTransparency() > 0)
-		{
-			closeBorder = applyOverlayTransparency(closeBorder, 0.75f);
-		}
-		graphics.setColor(closeBorder);
-		graphics.drawRect(closeButton.x, closeButton.y, closeButton.width, closeButton.height);
-		drawCenteredOpaqueShadowText(graphics, "X", closeButton, xTextColor());
+		graphics.fillRect(closeInnerBounds.x, closeInnerBounds.y, closeInnerBounds.width, closeInnerBounds.height);
+		graphics.setColor(applyOverlayTransparency(overlayBorderColor()));
+		graphics.setStroke(new BasicStroke(1f));
+		graphics.drawRect(0, 0, frameWidth - 1, frameHeight - 1);
+		graphics.drawLine(1, TITLE_BAR_HEIGHT - 1, frameWidth - 2, TITLE_BAR_HEIGHT - 1);
+		graphics.drawLine(closeButton.x, closeButton.y + 1, closeButton.x, closeButton.y + closeButton.height - 2);
+		drawCloseButtonIcon(graphics, closeInnerBounds, xTextColor());
 
 		drawOpeningFlair(graphics, frameWidth, frameHeight);
 	}
@@ -1984,12 +1998,6 @@ public class PlayerExamineOverlay extends Overlay
 		return theme == null ? config.xTextColor() : theme.closeText;
 	}
 
-	private Color xBorderColor()
-	{
-		ThemeColors theme = themeColors();
-		return theme == null ? config.xBorderColor() : theme.closeBorder;
-	}
-
 	private Color overlayCloseColor()
 	{
 		ThemeColors theme = themeColors();
@@ -2255,33 +2263,177 @@ public class PlayerExamineOverlay extends Overlay
 
 	public void copyThemeColorsToCustom(ConfigManager configManager, PlayerExamineConfig.CustomColorStartingPoint startingPoint)
 	{
+		if (isCustomStartingPoint(startingPoint))
+		{
+			copyCustomPresetToCustom(configManager, startingPoint);
+			configManager.setConfiguration(PlayerExamineConfig.CONFIG_GROUP, "themePreset", PlayerExamineConfig.ThemePreset.Custom.name());
+			return;
+		}
+
 		PlayerExamineConfig.ThemePreset preset = themePresetFromStartingPoint(startingPoint);
 		ThemeColors theme = themeColors(preset);
 		if (theme != null)
 		{
-			setColorConfig(configManager, "overlayBackgroundColor", theme.background);
-			setColorConfig(configManager, "overlayBorderColor", theme.border);
-			setColorConfig(configManager, "overlayHeaderTextColor", theme.headerText);
-			setColorConfig(configManager, "overlaySubTextColor", theme.subText);
-			setColorConfig(configManager, "overlayCloseTextColor", theme.closeText);
-			setColorConfig(configManager, "overlayCloseBorderColor", theme.closeBorder);
-			setColorConfig(configManager, "overlayCloseColor", theme.closeFill);
-			setColorConfig(configManager, "overlayCloseHoverColor", theme.closeHover);
-			setColorConfig(configManager, "overlaySlotFillColor", theme.slotFill);
-			setColorConfig(configManager, "overlaySlotEmptyColor", theme.slotEmpty);
-			setColorConfig(configManager, "overlaySlotBorderColor", theme.slotBorder);
-			setColorConfig(configManager, "overlaySlotHoverColor", theme.slotHover);
-			setColorConfig(configManager, "totalGeTextColor", theme.totalGe);
-			setColorConfig(configManager, "totalHaTextColor", theme.totalHa);
-			setColorConfig(configManager, "openingFlairColor", theme.flair);
-			setColorConfig(configManager, "valueHighlightColor", theme.valueHighlight);
-			setColorConfig(configManager, "activeTabTextColor", theme.headerText);
-			setColorConfig(configManager, "inactiveTabTextColor", theme.subText);
-			setColorConfig(configManager, "statsLabelTextColor", theme.subText);
-			setColorConfig(configManager, "statsLevelTextColor", theme.headerText);
+			setThemeColorsToCustom(configManager, theme);
 			configManager.setConfiguration(PlayerExamineConfig.CONFIG_GROUP, "themePreset", PlayerExamineConfig.ThemePreset.Custom.name());
 		}
 
+	}
+
+	public void saveCustomPresetColor(ConfigManager configManager, String keyName)
+	{
+		PlayerExamineConfig.CustomColorStartingPoint startingPoint = config.customColorStartingPoint();
+		if (!isCustomStartingPoint(startingPoint) || !isCustomColorKey(keyName))
+		{
+			return;
+		}
+
+		String value = configManager.getConfiguration(PlayerExamineConfig.CONFIG_GROUP, keyName);
+		if (value != null)
+		{
+			configManager.setConfiguration(PlayerExamineConfig.CONFIG_GROUP, customPresetKey(startingPoint, keyName), value);
+		}
+	}
+
+	private void copyCustomPresetToCustom(ConfigManager configManager, PlayerExamineConfig.CustomColorStartingPoint startingPoint)
+	{
+		if (!customPresetExists(configManager, startingPoint))
+		{
+			ThemeColors classic = themeColors(PlayerExamineConfig.ThemePreset.Classic);
+			setThemeColorsToCustom(configManager, classic);
+			saveThemeColorsToPreset(configManager, startingPoint, classic);
+			return;
+		}
+
+		for (String keyName : CUSTOM_COLOR_KEYS)
+		{
+			Color color = configManager.getConfiguration(PlayerExamineConfig.CONFIG_GROUP, customPresetKey(startingPoint, keyName), Color.class);
+			if (color != null)
+			{
+				setColorConfig(configManager, keyName, color);
+			}
+		}
+	}
+
+	private static void saveThemeColorsToPreset(ConfigManager configManager, PlayerExamineConfig.CustomColorStartingPoint startingPoint, ThemeColors colors)
+	{
+		setColorConfig(configManager, customPresetKey(startingPoint, "overlayBackgroundColor"), colors.background);
+		setColorConfig(configManager, customPresetKey(startingPoint, "overlayBorderColor"), colors.border);
+		setColorConfig(configManager, customPresetKey(startingPoint, "overlayHeaderTextColor"), colors.headerText);
+		setColorConfig(configManager, customPresetKey(startingPoint, "overlaySubTextColor"), colors.subText);
+		setColorConfig(configManager, customPresetKey(startingPoint, "overlayCloseTextColor"), colors.closeText);
+		setColorConfig(configManager, customPresetKey(startingPoint, "overlayCloseColor"), colors.closeFill);
+		setColorConfig(configManager, customPresetKey(startingPoint, "overlayCloseHoverColor"), colors.closeHover);
+		setColorConfig(configManager, customPresetKey(startingPoint, "overlaySlotFillColor"), colors.slotFill);
+		setColorConfig(configManager, customPresetKey(startingPoint, "overlaySlotEmptyColor"), colors.slotEmpty);
+		setColorConfig(configManager, customPresetKey(startingPoint, "overlaySlotBorderColor"), colors.slotBorder);
+		setColorConfig(configManager, customPresetKey(startingPoint, "overlaySlotHoverColor"), colors.slotHover);
+		setColorConfig(configManager, customPresetKey(startingPoint, "totalGeTextColor"), colors.totalGe);
+		setColorConfig(configManager, customPresetKey(startingPoint, "totalHaTextColor"), colors.totalHa);
+		setColorConfig(configManager, customPresetKey(startingPoint, "openingFlairColor"), colors.flair);
+		setColorConfig(configManager, customPresetKey(startingPoint, "valueHighlightColor"), colors.valueHighlight);
+		setColorConfig(configManager, customPresetKey(startingPoint, "activeTabTextColor"), colors.headerText);
+		setColorConfig(configManager, customPresetKey(startingPoint, "inactiveTabTextColor"), colors.subText);
+		setColorConfig(configManager, customPresetKey(startingPoint, "statsLabelTextColor"), colors.subText);
+		setColorConfig(configManager, customPresetKey(startingPoint, "statsLevelTextColor"), colors.headerText);
+	}
+
+	private void saveCurrentCustomColorsToPreset(ConfigManager configManager, PlayerExamineConfig.CustomColorStartingPoint startingPoint)
+	{
+		ThemeColors colors = currentCustomColors();
+		setColorConfig(configManager, customPresetKey(startingPoint, "overlayBackgroundColor"), colors.background);
+		setColorConfig(configManager, customPresetKey(startingPoint, "overlayBorderColor"), colors.border);
+		setColorConfig(configManager, customPresetKey(startingPoint, "overlayHeaderTextColor"), colors.headerText);
+		setColorConfig(configManager, customPresetKey(startingPoint, "overlaySubTextColor"), colors.subText);
+		setColorConfig(configManager, customPresetKey(startingPoint, "overlayCloseTextColor"), colors.closeText);
+		setColorConfig(configManager, customPresetKey(startingPoint, "overlayCloseColor"), colors.closeFill);
+		setColorConfig(configManager, customPresetKey(startingPoint, "overlayCloseHoverColor"), colors.closeHover);
+		setColorConfig(configManager, customPresetKey(startingPoint, "overlaySlotFillColor"), colors.slotFill);
+		setColorConfig(configManager, customPresetKey(startingPoint, "overlaySlotEmptyColor"), colors.slotEmpty);
+		setColorConfig(configManager, customPresetKey(startingPoint, "overlaySlotBorderColor"), colors.slotBorder);
+		setColorConfig(configManager, customPresetKey(startingPoint, "overlaySlotHoverColor"), colors.slotHover);
+		setColorConfig(configManager, customPresetKey(startingPoint, "totalGeTextColor"), colors.totalGe);
+		setColorConfig(configManager, customPresetKey(startingPoint, "totalHaTextColor"), colors.totalHa);
+		setColorConfig(configManager, customPresetKey(startingPoint, "openingFlairColor"), colors.flair);
+		setColorConfig(configManager, customPresetKey(startingPoint, "valueHighlightColor"), colors.valueHighlight);
+		setColorConfig(configManager, customPresetKey(startingPoint, "activeTabTextColor"), config.activeTabTextColor());
+		setColorConfig(configManager, customPresetKey(startingPoint, "inactiveTabTextColor"), config.inactiveTabTextColor());
+		setColorConfig(configManager, customPresetKey(startingPoint, "statsLabelTextColor"), config.statsLabelTextColor());
+		setColorConfig(configManager, customPresetKey(startingPoint, "statsLevelTextColor"), config.statsLevelTextColor());
+	}
+
+	private ThemeColors currentCustomColors()
+	{
+		return new ThemeColors(
+			config.overlayBackgroundColor(),
+			config.overlayBorderColor(),
+			config.usernameTextColor(),
+			config.combatTextColor(),
+			config.xTextColor(),
+			config.overlayBorderColor(),
+			config.overlayCloseColor(),
+			config.overlayCloseHoverColor(),
+			config.overlaySlotFillColor(),
+			config.overlaySlotEmptyColor(),
+			config.overlaySlotBorderColor(),
+			config.overlaySlotHoverColor(),
+			config.totalGeTextColor(),
+			config.totalHaTextColor(),
+			config.openingFlairColor(),
+			config.valueHighlightColor());
+	}
+
+	private static void setThemeColorsToCustom(ConfigManager configManager, ThemeColors theme)
+	{
+		setColorConfig(configManager, "overlayBackgroundColor", theme.background);
+		setColorConfig(configManager, "overlayBorderColor", theme.border);
+		setColorConfig(configManager, "overlayHeaderTextColor", theme.headerText);
+		setColorConfig(configManager, "overlaySubTextColor", theme.subText);
+		setColorConfig(configManager, "overlayCloseTextColor", theme.closeText);
+		setColorConfig(configManager, "overlayCloseColor", theme.closeFill);
+		setColorConfig(configManager, "overlayCloseHoverColor", theme.closeHover);
+		setColorConfig(configManager, "overlaySlotFillColor", theme.slotFill);
+		setColorConfig(configManager, "overlaySlotEmptyColor", theme.slotEmpty);
+		setColorConfig(configManager, "overlaySlotBorderColor", theme.slotBorder);
+		setColorConfig(configManager, "overlaySlotHoverColor", theme.slotHover);
+		setColorConfig(configManager, "totalGeTextColor", theme.totalGe);
+		setColorConfig(configManager, "totalHaTextColor", theme.totalHa);
+		setColorConfig(configManager, "openingFlairColor", theme.flair);
+		setColorConfig(configManager, "valueHighlightColor", theme.valueHighlight);
+		setColorConfig(configManager, "activeTabTextColor", theme.headerText);
+		setColorConfig(configManager, "inactiveTabTextColor", theme.subText);
+		setColorConfig(configManager, "statsLabelTextColor", theme.subText);
+		setColorConfig(configManager, "statsLevelTextColor", theme.headerText);
+	}
+
+	private static boolean customPresetExists(ConfigManager configManager, PlayerExamineConfig.CustomColorStartingPoint startingPoint)
+	{
+		return configManager.getConfiguration(PlayerExamineConfig.CONFIG_GROUP, customPresetKey(startingPoint, "overlayBackgroundColor")) != null;
+	}
+
+	private static boolean isCustomStartingPoint(PlayerExamineConfig.CustomColorStartingPoint startingPoint)
+	{
+		return startingPoint == PlayerExamineConfig.CustomColorStartingPoint.Custom1
+			|| startingPoint == PlayerExamineConfig.CustomColorStartingPoint.Custom2
+			|| startingPoint == PlayerExamineConfig.CustomColorStartingPoint.Custom3;
+	}
+
+	private static boolean isCustomColorKey(String keyName)
+	{
+		for (String customColorKey : CUSTOM_COLOR_KEYS)
+		{
+			if (customColorKey.equals(keyName))
+			{
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	private static String customPresetKey(PlayerExamineConfig.CustomColorStartingPoint startingPoint, String keyName)
+	{
+		return CUSTOM_PRESET_PREFIX + startingPoint.name() + "." + keyName;
 	}
 
 	private static PlayerExamineConfig.ThemePreset themePresetFromStartingPoint(PlayerExamineConfig.CustomColorStartingPoint startingPoint)
@@ -2340,18 +2492,19 @@ public class PlayerExamineOverlay extends Overlay
 		drawShadowText(graphics, text, x, y, color);
 	}
 
-	private void drawCenteredOpaqueShadowText(Graphics2D graphics, String text, Rectangle bounds, Color color)
+	private void drawCloseButtonIcon(Graphics2D graphics, Rectangle bounds, Color color)
 	{
-		FontMetrics metrics = graphics.getFontMetrics();
-		int x = bounds.x + (bounds.width - metrics.stringWidth(text)) / 2;
-		int y = bounds.y + ((bounds.height - metrics.getHeight()) / 2) + metrics.getAscent();
-		if (textShadowEnabled())
-		{
-			graphics.setColor(new Color(16, 12, 8));
-			graphics.drawString(text, x + 1, y + 1);
-		}
-		graphics.setColor(color);
-		graphics.drawString(text, x, y);
+		int inset = 3;
+		int left = bounds.x + inset;
+		int top = bounds.y + inset;
+		int right = bounds.x + bounds.width - 1 - inset;
+		int bottom = bounds.y + bounds.height - 1 - inset;
+		Stroke originalStroke = graphics.getStroke();
+		graphics.setStroke(new BasicStroke(1f));
+		graphics.setColor(applyTextTransparency(color));
+		graphics.drawLine(left, top, right, bottom);
+		graphics.drawLine(right, top, left, bottom);
+		graphics.setStroke(originalStroke);
 	}
 
 	private Color applyOverlayTransparency(Color color)

@@ -80,7 +80,31 @@ public interface PlayerExamineConfig extends Config
 		Zaros,
 		Guthix,
 		Saradomin,
-		Blood
+		Blood,
+		Custom1
+		{
+			@Override
+			public String toString()
+			{
+				return "Custom 1";
+			}
+		},
+		Custom2
+		{
+			@Override
+			public String toString()
+			{
+				return "Custom 2";
+			}
+		},
+		Custom3
+		{
+			@Override
+			public String toString()
+			{
+				return "Custom 3";
+			}
+		}
 	}
 
 	enum DefaultTab
@@ -826,19 +850,6 @@ public interface PlayerExamineConfig extends Config
 	default Color xTextColor()
 	{
 		return new Color(200, 186, 140);
-	}
-
-	@Alpha
-	@ConfigItem(
-		keyName = "overlayCloseBorderColor",
-		name = "Close border",
-		position = 13,
-		section = OVERLAY_COLORS_SECTION,
-		description = "Border color for the close button"
-	)
-	default Color xBorderColor()
-	{
-		return new Color(53, 42, 28);
 	}
 
 	@Alpha
