@@ -7,10 +7,10 @@ Player Examine turns player examines into a compact, configurable overlay for ch
 <table>
   <tr>
     <td valign="top">
-      <img src="images/examine1.png" alt="Example overlay 2" />
+      <img src="images/examine1.png" alt="Example overlay 1" />
     </td>
     <td valign="top">
-      <img src="images/examine2.png" alt="Example overlay 1" />
+      <img src="images/examine2.png" alt="Example overlay 2" />
     </td>
   </tr>
 </table>
