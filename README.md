@@ -7,10 +7,10 @@ Player Examine turns player examines into a compact, configurable overlay for ch
 <table>
   <tr>
     <td valign="top">
-      <img src="images/playerexamine2.png" alt="Example overlay 2" />
+      <img src="images/examine1.png" alt="Example overlay 2" />
     </td>
     <td valign="top">
-      <img src="images/playerexamine1.png" alt="Example overlay 1" />
+      <img src="images/examine2.png" alt="Example overlay 1" />
     </td>
   </tr>
 </table>
@@ -34,4 +34,13 @@ Player Examine turns player examines into a compact, configurable overlay for ch
 
 ## Configuration
 
-![Configuration](images/playerexamineconfigs.png)
+<table>
+  <tr>
+    <td valign="top">
+      <img src="images/playerexamineconfigs1.png" alt="Configuration options 1" />
+    </td>
+    <td valign="top">
+      <img src="images/playerexamineconfigs2.png" alt="Configuration options 2" />
+    </td>
+  </tr>
+</table>
