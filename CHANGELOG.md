@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.1.1 - 28 Aug 2026
+
+### Fixes
+
+- Fixes custom theme color edits not being saved for Custom Color Bases when switching between bases.
+- Fixes resetting a custom theme color while using a preset base restoring the `Classic` default instead of that base's default.
+
 ## 1.1.0 - 28 Aug 2026
 
 ### Features

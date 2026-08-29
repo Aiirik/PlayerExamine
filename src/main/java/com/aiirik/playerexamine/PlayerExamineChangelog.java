@@ -5,10 +5,11 @@ import java.util.List;
 
 final class PlayerExamineChangelog
 {
-	static final String VERSION = "1.1.0";
+	static final String VERSION = "1.1.1";
 
 	private static final List<String> CHANGES = Arrays.asList(
-			"Player Examine has updated! Check out the plugin settings for new features.");
+			"Custom theme base edits now stay saved when switching between bases",
+			"Resetting a custom theme color now restores the selected base theme's default");
 
 	private PlayerExamineChangelog()
 	{

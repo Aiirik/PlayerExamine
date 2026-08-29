@@ -2263,45 +2263,54 @@ public class PlayerExamineOverlay extends Overlay
 
 	public void copyThemeColorsToCustom(ConfigManager configManager, PlayerExamineConfig.CustomColorStartingPoint startingPoint)
 	{
-		if (isCustomStartingPoint(startingPoint))
+		ThemeColors defaultColors = defaultThemeColors(startingPoint);
+		if (defaultColors == null)
 		{
-			copyCustomPresetToCustom(configManager, startingPoint);
-			configManager.setConfiguration(PlayerExamineConfig.CONFIG_GROUP, "themePreset", PlayerExamineConfig.ThemePreset.Custom.name());
 			return;
 		}
 
-		PlayerExamineConfig.ThemePreset preset = themePresetFromStartingPoint(startingPoint);
-		ThemeColors theme = themeColors(preset);
-		if (theme != null)
-		{
-			setThemeColorsToCustom(configManager, theme);
-			configManager.setConfiguration(PlayerExamineConfig.CONFIG_GROUP, "themePreset", PlayerExamineConfig.ThemePreset.Custom.name());
-		}
-
+		copySavedStartingPointToCustom(configManager, startingPoint, defaultColors);
+		configManager.setConfiguration(PlayerExamineConfig.CONFIG_GROUP, "themePreset", PlayerExamineConfig.ThemePreset.Custom.name());
 	}
 
 	public void saveCustomPresetColor(ConfigManager configManager, String keyName)
 	{
 		PlayerExamineConfig.CustomColorStartingPoint startingPoint = config.customColorStartingPoint();
-		if (!isCustomStartingPoint(startingPoint) || !isCustomColorKey(keyName))
+		if (startingPoint == null || !isCustomColorKey(keyName))
 		{
 			return;
+		}
+
+		if (!customPresetExists(configManager, startingPoint))
+		{
+			saveCurrentCustomColorsToPreset(configManager, startingPoint);
 		}
 
 		String value = configManager.getConfiguration(PlayerExamineConfig.CONFIG_GROUP, keyName);
 		if (value != null)
 		{
 			configManager.setConfiguration(PlayerExamineConfig.CONFIG_GROUP, customPresetKey(startingPoint, keyName), value);
+			return;
+		}
+
+		ThemeColors defaultColors = defaultThemeColors(startingPoint);
+		Color defaultColor = colorForKey(defaultColors, keyName);
+		if (defaultColor != null)
+		{
+			setColorConfig(configManager, keyName, defaultColor);
+			setColorConfig(configManager, customPresetKey(startingPoint, keyName), defaultColor);
 		}
 	}
 
-	private void copyCustomPresetToCustom(ConfigManager configManager, PlayerExamineConfig.CustomColorStartingPoint startingPoint)
+	private void copySavedStartingPointToCustom(
+		ConfigManager configManager,
+		PlayerExamineConfig.CustomColorStartingPoint startingPoint,
+		ThemeColors defaultColors)
 	{
 		if (!customPresetExists(configManager, startingPoint))
 		{
-			ThemeColors classic = themeColors(PlayerExamineConfig.ThemePreset.Classic);
-			setThemeColorsToCustom(configManager, classic);
-			saveThemeColorsToPreset(configManager, startingPoint, classic);
+			setThemeColorsToCustom(configManager, defaultColors);
+			saveThemeColorsToPreset(configManager, startingPoint, defaultColors);
 			return;
 		}
 
@@ -2418,6 +2427,21 @@ public class PlayerExamineOverlay extends Overlay
 			|| startingPoint == PlayerExamineConfig.CustomColorStartingPoint.Custom3;
 	}
 
+	private static ThemeColors defaultThemeColors(PlayerExamineConfig.CustomColorStartingPoint startingPoint)
+	{
+		if (startingPoint == null)
+		{
+			return null;
+		}
+
+		if (isCustomStartingPoint(startingPoint))
+		{
+			return themeColors(PlayerExamineConfig.ThemePreset.Classic);
+		}
+
+		return themeColors(themePresetFromStartingPoint(startingPoint));
+	}
+
 	private static boolean isCustomColorKey(String keyName)
 	{
 		for (String customColorKey : CUSTOM_COLOR_KEYS)
@@ -2429,6 +2453,54 @@ public class PlayerExamineOverlay extends Overlay
 		}
 
 		return false;
+	}
+
+	private static Color colorForKey(ThemeColors colors, String keyName)
+	{
+		if (colors == null)
+		{
+			return null;
+		}
+
+		switch (keyName)
+		{
+			case "overlayBackgroundColor":
+				return colors.background;
+			case "overlayBorderColor":
+				return colors.border;
+			case "overlayHeaderTextColor":
+			case "activeTabTextColor":
+			case "statsLevelTextColor":
+				return colors.headerText;
+			case "overlaySubTextColor":
+			case "inactiveTabTextColor":
+			case "statsLabelTextColor":
+				return colors.subText;
+			case "overlayCloseTextColor":
+				return colors.closeText;
+			case "overlayCloseColor":
+				return colors.closeFill;
+			case "overlayCloseHoverColor":
+				return colors.closeHover;
+			case "overlaySlotFillColor":
+				return colors.slotFill;
+			case "overlaySlotEmptyColor":
+				return colors.slotEmpty;
+			case "overlaySlotBorderColor":
+				return colors.slotBorder;
+			case "overlaySlotHoverColor":
+				return colors.slotHover;
+			case "totalGeTextColor":
+				return colors.totalGe;
+			case "totalHaTextColor":
+				return colors.totalHa;
+			case "openingFlairColor":
+				return colors.flair;
+			case "valueHighlightColor":
+				return colors.valueHighlight;
+			default:
+				return null;
+		}
 	}
 
 	private static String customPresetKey(PlayerExamineConfig.CustomColorStartingPoint startingPoint, String keyName)

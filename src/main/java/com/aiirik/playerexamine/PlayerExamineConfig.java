@@ -396,7 +396,7 @@ public interface PlayerExamineConfig extends Config
 		name = "Custom color base",
 		position = 1,
 		section = OVERLAY_COLORS_SECTION,
-		description = "Copy a preset theme's colors into Custom as a starting point. You may briefly see a RuneLite update popup while the plugin refreshes to show the new colors."
+		description = "Select a preset theme's colors as a base as a starting point for a custom theme. You may briefly see a RuneLite update popup while the plugin refreshes to show the new colors."
 	)
 	default CustomColorStartingPoint customColorStartingPoint()
 	{

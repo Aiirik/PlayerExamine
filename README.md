@@ -25,7 +25,7 @@ Player Examine turns player examines into a compact, configurable overlay for ch
 - Shows stats hover tooltips with skill name, rank, experience, and remaining XP
 - Supports total value display in the overlay footer, with compact value formatting by default
 - Supports hiding slots marked `Not visible from examine`
-- Includes configurable overlay width, transparency, light and themed color presets including Saradomin, and text colors
+- Includes configurable overlay width, transparency, editable light and themed color preset bases including Saradomin, and text colors
 - Includes separate color groups for overlay, list-style rows, item hover tooltips, and stats hover tooltips
 - Includes optional opening glow, default tab choices including `Remember last`, and custom Attack icon choices for the visual stats tab
 - Supports optional GE value threshold glow on equipment slot borders
