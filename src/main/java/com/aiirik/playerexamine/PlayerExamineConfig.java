@@ -335,7 +335,7 @@ public interface PlayerExamineConfig extends Config
 		name = "Text transparency",
 		position = 91,
 		section = OVERLAY_COLORS_SECTION,
-		description = "Apply additional transparency to overlay and tooltip text"
+		description = "Apply additional transparency to overlay text"
 	)
 	@Range(min = 0, max = 100)
 	default int overlayTextTransparency()
@@ -524,9 +524,33 @@ public interface PlayerExamineConfig extends Config
 	}
 
 	@ConfigItem(
+		keyName = "matchTooltipContainerToTheme",
+		name = "Match theme",
+		position = 0,
+		section = TOOLTIP_COLORS_SECTION,
+		description = "Use the selected overlay theme or custom theme for tooltip background and outline"
+	)
+	default boolean matchTooltipContainerToTheme()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "matchTooltipLabelValueToTheme",
+		name = "Match label/value",
+		position = 1,
+		section = TOOLTIP_COLORS_SECTION,
+		description = "Use the selected overlay theme or custom theme for tooltip label and value text"
+	)
+	default boolean matchTooltipLabelValueToTheme()
+	{
+		return true;
+	}
+
+	@ConfigItem(
 		keyName = "tooltipItemTextColor",
 		name = "Item text",
-		position = 0,
+		position = 2,
 		section = TOOLTIP_COLORS_SECTION,
 		description = "Hovered item name and tooltip section header color"
 	)
@@ -538,7 +562,7 @@ public interface PlayerExamineConfig extends Config
 	@ConfigItem(
 		keyName = "tooltipOtherTextColor",
 		name = "Label text",
-		position = 1,
+		position = 3,
 		section = TOOLTIP_COLORS_SECTION,
 		description = "Tooltip labels and section headers color"
 	)
@@ -550,7 +574,7 @@ public interface PlayerExamineConfig extends Config
 	@ConfigItem(
 		keyName = "tooltipValueTextColor",
 		name = "Value text",
-		position = 2,
+		position = 4,
 		section = TOOLTIP_COLORS_SECTION,
 		description = "Tooltip numeric value color"
 	)
@@ -562,7 +586,7 @@ public interface PlayerExamineConfig extends Config
 	@ConfigItem(
 		keyName = "tooltipPositiveBonusColor",
 		name = "+ bonus",
-		position = 3,
+		position = 5,
 		section = TOOLTIP_COLORS_SECTION,
 		description = "Tooltip color for positive bonus differences"
 	)
@@ -574,13 +598,39 @@ public interface PlayerExamineConfig extends Config
 	@ConfigItem(
 		keyName = "tooltipNegativeBonusColor",
 		name = "- bonus",
-		position = 4,
+		position = 6,
 		section = TOOLTIP_COLORS_SECTION,
 		description = "Tooltip color for negative bonus differences"
 	)
 	default Color tooltipNegativeBonusColor()
 	{
 		return new Color(192, 48, 48);
+	}
+
+	@ConfigItem(
+		keyName = "tooltipTransparency",
+		name = "Tooltip transparency",
+		position = 90,
+		section = TOOLTIP_COLORS_SECTION,
+		description = "Apply additional transparency to themed tooltip backgrounds and outlines"
+	)
+	@Range(min = 0, max = 100)
+	default int tooltipTransparency()
+	{
+		return 0;
+	}
+
+	@ConfigItem(
+		keyName = "tooltipTextTransparency",
+		name = "Text transparency",
+		position = 91,
+		section = TOOLTIP_COLORS_SECTION,
+		description = "Apply additional transparency to tooltip text"
+	)
+	@Range(min = 0, max = 100)
+	default int tooltipTextTransparency()
+	{
+		return 0;
 	}
 
 	@ConfigItem(

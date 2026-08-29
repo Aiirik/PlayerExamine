@@ -9,6 +9,7 @@
 - Adds a `Custom color base` dropdown to use a preset as the starting point for a custom theme.
 - Adds configurable text shadow behavior with `Auto`, `On`, and `Off` modes.
 - Adds an option to use bold text throughout the overlay.
+- Adds options for item and stats tooltip backgrounds and label/value text to match the selected theme or custom overlay colors, with separate tooltip transparency controls.
 - Adds custom overlay colors for stats labels, stats levels, active tabs, and inactive tabs.
 
 ### Fixes

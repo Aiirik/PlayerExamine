@@ -39,6 +39,7 @@ import net.runelite.client.ui.overlay.Overlay;
 import net.runelite.client.ui.overlay.OverlayLayer;
 import net.runelite.client.ui.overlay.OverlayPosition;
 import net.runelite.client.ui.overlay.OverlayPriority;
+import net.runelite.client.ui.overlay.components.LayoutableRenderableEntity;
 import net.runelite.client.ui.overlay.tooltip.Tooltip;
 import net.runelite.client.ui.overlay.tooltip.TooltipManager;
 import net.runelite.client.util.ColorUtil;
@@ -921,7 +922,7 @@ public class PlayerExamineOverlay extends Overlay
 				String tooltip = buildStatsTooltip(statCell);
 				if (tooltip != null && !tooltip.isEmpty())
 				{
-					tooltipManager.add(new Tooltip(tooltip));
+					addTooltip(tooltip);
 				}
 			}
 			return;
@@ -949,11 +950,11 @@ public class PlayerExamineOverlay extends Overlay
 					}
 					else if (slot.isShowEmptyTooltip())
 					{
-						tooltipManager.add(new Tooltip("Nothing equipped"));
+						addTooltip("Nothing equipped");
 					}
 					else if (!config.hideNotVisibleSlots())
 					{
-						tooltipManager.add(new Tooltip("Not visible from examine"));
+						addTooltip("Not visible from examine");
 					}
 					return;
 				}
@@ -971,11 +972,11 @@ public class PlayerExamineOverlay extends Overlay
 				}
 				else if (slot.isShowEmptyTooltip())
 				{
-					tooltipManager.add(new Tooltip("Nothing equipped"));
+					addTooltip("Nothing equipped");
 				}
 				else if (!config.hideNotVisibleSlots())
 				{
-					tooltipManager.add(new Tooltip("Not visible from examine"));
+					addTooltip("Not visible from examine");
 				}
 				return;
 			}
@@ -1016,6 +1017,20 @@ public class PlayerExamineOverlay extends Overlay
 		return String.join("<br>", lines);
 	}
 
+	private void addTooltip(String text)
+	{
+		if (!config.matchTooltipContainerToTheme())
+		{
+			tooltipManager.add(new Tooltip(text));
+			return;
+		}
+
+		tooltipManager.add(new Tooltip(new ThemedTooltipComponent(
+			text,
+			applyTooltipTransparency(overlayBackgroundColor()),
+			applyTooltipTransparency(overlayBorderColor()))));
+	}
+
 	private static String formatRank(int rank)
 	{
 		return rank > 0 ? "#" + formatPrice(rank) : "Unranked";
@@ -1035,7 +1050,7 @@ public class PlayerExamineOverlay extends Overlay
 
 	private void addItemTooltips(EquipmentEntry entry)
 	{
-		tooltipManager.add(new Tooltip(formatTooltipLabel(getDisplayItemName(entry))));
+		addTooltip(formatTooltipLabel(getDisplayItemName(entry)));
 
 		List<String> valueLines = new ArrayList<>();
 		if (config.showGeValue())
@@ -1050,7 +1065,7 @@ public class PlayerExamineOverlay extends Overlay
 
 		if (!valueLines.isEmpty())
 		{
-			tooltipManager.add(new Tooltip(String.join("<br>", valueLines)));
+			addTooltip(String.join("<br>", valueLines));
 		}
 
 		if (config.showEquipmentBonuses())
@@ -1058,7 +1073,7 @@ public class PlayerExamineOverlay extends Overlay
 			String equipmentBonusTooltip = buildEquipmentBonusTooltip(entry.getItemId());
 			if (!equipmentBonusTooltip.isEmpty())
 			{
-				tooltipManager.add(new Tooltip(equipmentBonusTooltip));
+				addTooltip(equipmentBonusTooltip);
 			}
 		}
 	}
@@ -1227,19 +1242,19 @@ public class PlayerExamineOverlay extends Overlay
 			color = delta > 0 ? config.tooltipPositiveBonusColor() : config.tooltipNegativeBonusColor();
 		}
 
-		return ColorUtil.wrapWithColorTag("(" + formatted + ")", applyTextTransparency(color));
+		return ColorUtil.wrapWithColorTag("(" + formatted + ")", applyTooltipTextTransparency(color));
 	}
 
 	private String formatTooltipLabel(String text)
 	{
-		return ColorUtil.wrapWithColorTag(text, applyTextTransparency(config.tooltipItemTextColor()));
+		return ColorUtil.wrapWithColorTag(text, applyTooltipTextTransparency(config.tooltipItemTextColor()));
 	}
 
 	private String formatTooltipStatLine(String label, String value, String delta)
 	{
 		StringBuilder builder = new StringBuilder();
-		builder.append(ColorUtil.wrapWithColorTag(label + ": ", applyTextTransparency(config.tooltipOtherTextColor())));
-		builder.append(ColorUtil.wrapWithColorTag(value, applyTextTransparency(config.tooltipValueTextColor())));
+		builder.append(ColorUtil.wrapWithColorTag(label + ": ", applyTooltipTextTransparency(tooltipLabelTextColor())));
+		builder.append(ColorUtil.wrapWithColorTag(value, applyTooltipTextTransparency(tooltipValueTextColor())));
 		if (delta != null)
 		{
 			builder.append("  ").append(delta);
@@ -2035,6 +2050,28 @@ public class PlayerExamineOverlay extends Overlay
 		return theme == null ? config.valueHighlightColor() : theme.valueHighlight;
 	}
 
+	private Color tooltipLabelTextColor()
+	{
+		if (!config.matchTooltipLabelValueToTheme())
+		{
+			return config.tooltipOtherTextColor();
+		}
+
+		ThemeColors theme = themeColors();
+		return theme == null ? config.combatTextColor() : theme.subText;
+	}
+
+	private Color tooltipValueTextColor()
+	{
+		if (!config.matchTooltipLabelValueToTheme())
+		{
+			return config.tooltipValueTextColor();
+		}
+
+		ThemeColors theme = themeColors();
+		return theme == null ? config.usernameTextColor() : theme.headerText;
+	}
+
 	private ThemeColors themeColors()
 	{
 		return themeColors(config.themePreset());
@@ -2087,22 +2124,22 @@ public class PlayerExamineOverlay extends Overlay
 					new Color(218, 154, 58, 210));
 			case Light:
 				return new ThemeColors(
-					new Color(238, 241, 244, 238),
+					new Color(238, 241, 244, 210),
 					new Color(136, 146, 156, 255),
 					new Color(32, 38, 44),
 					new Color(80, 88, 96),
 					new Color(34, 40, 46),
 					new Color(144, 152, 160),
-					new Color(222, 226, 230),
-					new Color(198, 207, 216),
-					new Color(224, 228, 232, 255),
-					new Color(210, 215, 220, 255),
+					new Color(222, 226, 230, 210),
+					new Color(198, 207, 216, 210),
+					new Color(224, 228, 232, 210),
+					new Color(210, 215, 220, 210),
 					new Color(146, 156, 166, 255),
 					new Color(116, 131, 145),
 					new Color(32, 38, 44),
 					new Color(80, 88, 96),
-					new Color(116, 160, 190, 220),
-					new Color(128, 190, 220, 210));
+					new Color(116, 160, 190, 198),
+					new Color(128, 190, 220, 189));
 			case Dark:
 				return new ThemeColors(
 					new Color(13, 15, 18, 235),
@@ -2356,6 +2393,168 @@ public class PlayerExamineOverlay extends Overlay
 		int alpha = color.getAlpha();
 		int adjustedAlpha = (alpha * Math.max(0, 100 - extraTransparency)) / 100;
 		return new Color(color.getRed(), color.getGreen(), color.getBlue(), adjustedAlpha);
+	}
+
+	private Color applyTooltipTransparency(Color color)
+	{
+		if (color == null)
+		{
+			return null;
+		}
+
+		int extraTransparency = config.tooltipTransparency();
+		if (extraTransparency <= 0)
+		{
+			return color;
+		}
+
+		int alpha = color.getAlpha();
+		int adjustedAlpha = (alpha * Math.max(0, 100 - extraTransparency)) / 100;
+		return new Color(color.getRed(), color.getGreen(), color.getBlue(), adjustedAlpha);
+	}
+
+	private Color applyTooltipTextTransparency(Color color)
+	{
+		if (color == null)
+		{
+			return null;
+		}
+
+		int extraTransparency = config.tooltipTextTransparency();
+		if (extraTransparency <= 0)
+		{
+			return color;
+		}
+
+		int alpha = color.getAlpha();
+		int adjustedAlpha = (alpha * Math.max(0, 100 - extraTransparency)) / 100;
+		return new Color(color.getRed(), color.getGreen(), color.getBlue(), adjustedAlpha);
+	}
+
+	private static final class ThemedTooltipComponent implements LayoutableRenderableEntity
+	{
+		private static final int PADDING = 4;
+		private static final String COLOR_TAG_PREFIX = "col=";
+		private final String text;
+		private final Color backgroundColor;
+		private final Color borderColor;
+		private java.awt.Point position = new java.awt.Point();
+
+		private ThemedTooltipComponent(String text, Color backgroundColor, Color borderColor)
+		{
+			this.text = text == null ? "" : text;
+			this.backgroundColor = backgroundColor;
+			this.borderColor = borderColor;
+		}
+
+		@Override
+		public Dimension render(Graphics2D graphics)
+		{
+			FontMetrics metrics = graphics.getFontMetrics();
+			String[] lines = text.split("(?i)</?br>");
+			int width = 0;
+			for (String line : lines)
+			{
+				width = Math.max(width, measureTaggedText(metrics, line));
+			}
+
+			int height = metrics.getHeight() * lines.length;
+			Rectangle bounds = new Rectangle(position.x, position.y, width + (PADDING * 2), height + (PADDING * 2));
+			graphics.setColor(backgroundColor);
+			graphics.fill(bounds);
+			graphics.setColor(borderColor);
+			graphics.draw(bounds);
+
+			int y = position.y + PADDING + metrics.getAscent();
+			for (String line : lines)
+			{
+				drawTaggedText(graphics, metrics, line, position.x + PADDING, y);
+				y += metrics.getHeight();
+			}
+
+			return bounds.getSize();
+		}
+
+		@Override
+		public Rectangle getBounds()
+		{
+			return null;
+		}
+
+		@Override
+		public void setPreferredLocation(java.awt.Point position)
+		{
+			this.position = position == null ? new java.awt.Point() : position;
+		}
+
+		@Override
+		public void setPreferredSize(Dimension dimension)
+		{
+		}
+
+		private static int measureTaggedText(FontMetrics metrics, String line)
+		{
+			int width = 0;
+			int index = 0;
+			while (index < line.length())
+			{
+				int tagStart = line.indexOf('<', index);
+				if (tagStart < 0)
+				{
+					return width + metrics.stringWidth(line.substring(index));
+				}
+
+				width += metrics.stringWidth(line.substring(index, tagStart));
+				int tagEnd = line.indexOf('>', tagStart);
+				if (tagEnd < 0)
+				{
+					return width + metrics.stringWidth(line.substring(tagStart));
+				}
+				index = tagEnd + 1;
+			}
+
+			return width;
+		}
+
+		private static void drawTaggedText(Graphics2D graphics, FontMetrics metrics, String line, int x, int y)
+		{
+			Color color = Color.WHITE;
+			int drawX = x;
+			int index = 0;
+			while (index < line.length())
+			{
+				int tagStart = line.indexOf('<', index);
+				if (tagStart < 0)
+				{
+					graphics.setColor(color);
+					graphics.drawString(line.substring(index), drawX, y);
+					return;
+				}
+
+				String textPart = line.substring(index, tagStart);
+				graphics.setColor(color);
+				graphics.drawString(textPart, drawX, y);
+				drawX += metrics.stringWidth(textPart);
+
+				int tagEnd = line.indexOf('>', tagStart);
+				if (tagEnd < 0)
+				{
+					graphics.drawString(line.substring(tagStart), drawX, y);
+					return;
+				}
+
+				String tag = line.substring(tagStart + 1, tagEnd);
+				if (tag.startsWith(COLOR_TAG_PREFIX))
+				{
+					color = Color.decode("#" + tag.substring(COLOR_TAG_PREFIX.length()));
+				}
+				else if ("/col".equals(tag))
+				{
+					color = Color.WHITE;
+				}
+				index = tagEnd + 1;
+			}
+		}
 	}
 
 	private String fitText(Graphics2D graphics, String text, int maxWidth)
