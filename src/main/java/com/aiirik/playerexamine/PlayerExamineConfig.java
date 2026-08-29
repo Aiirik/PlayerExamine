@@ -425,7 +425,7 @@ public interface PlayerExamineConfig extends Config
 	)
 	default TotalValueFormat totalValueFormat()
 	{
-		return TotalValueFormat.Short;
+		return TotalValueFormat.Both;
 	}
 
 	@ConfigItem(
@@ -521,7 +521,7 @@ public interface PlayerExamineConfig extends Config
 	)
 	default TotalValueFormat itemValueFormat()
 	{
-		return TotalValueFormat.Short;
+		return TotalValueFormat.Both;
 	}
 
 	@ConfigItem(
