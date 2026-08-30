@@ -2,9 +2,11 @@ package com.aiirik.playerexamine.overlay;
 
 import com.aiirik.playerexamine.PlayerExamineConfig;
 import com.aiirik.playerexamine.PlayerExaminePlugin;
+import com.aiirik.playerexamine.PlayerExamineColorSettings;
 import com.aiirik.playerexamine.model.PlayerExamineData;
 import com.aiirik.playerexamine.model.PlayerExamineData.EquipmentEntry;
 import com.aiirik.playerexamine.model.PlayerHiscoreData;
+import com.google.gson.Gson;
 import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Dimension;
@@ -19,6 +21,7 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -2298,6 +2301,30 @@ public class PlayerExamineOverlay extends Overlay
 		configManager.setConfiguration(PlayerExamineConfig.CONFIG_GROUP, "themePreset", PlayerExamineConfig.ThemePreset.Custom.name());
 	}
 
+	public String exportCurrentColorTheme(String themeName, Gson gson)
+	{
+		ThemeColors colors = themeColors();
+		return PlayerExamineColorSettings.exportToJson(themeName, themeColorMap(colors == null ? currentCustomColors() : colors), gson);
+	}
+
+	public int applyColorTheme(ConfigManager configManager, String json)
+	{
+		Map<String, String> colors = PlayerExamineColorSettings.importFromJson(json);
+
+		for (Map.Entry<String, String> entry : colors.entrySet())
+		{
+			configManager.setConfiguration(
+				PlayerExamineConfig.CONFIG_GROUP,
+				customPresetKey(PlayerExamineConfig.CustomColorStartingPoint.SidePanelTheme, entry.getKey()),
+				entry.getValue());
+			setColorConfig(configManager, entry.getKey(), new Color(Integer.parseInt(entry.getValue()), true));
+		}
+
+		configManager.setConfiguration(PlayerExamineConfig.CONFIG_GROUP, "themePreset", PlayerExamineConfig.ThemePreset.Custom.name());
+		configManager.setConfiguration(PlayerExamineConfig.CONFIG_GROUP, "customColorStartingPoint", PlayerExamineConfig.CustomColorStartingPoint.SidePanelTheme.name());
+		return colors.size();
+	}
+
 	public void saveCustomPresetColor(ConfigManager configManager, String keyName)
 	{
 		PlayerExamineConfig.CustomColorStartingPoint startingPoint = config.customColorStartingPoint();
@@ -2325,6 +2352,21 @@ public class PlayerExamineOverlay extends Overlay
 			setColorConfig(configManager, keyName, defaultColor);
 			setColorConfig(configManager, customPresetKey(startingPoint, keyName), defaultColor);
 		}
+	}
+
+	private static Map<String, String> themeColorMap(ThemeColors colors)
+	{
+		Map<String, String> colorMap = new LinkedHashMap<>();
+		for (String key : PlayerExamineColorSettings.THEME_COLOR_KEYS)
+		{
+			Color color = colorForKey(colors, key);
+			if (color != null)
+			{
+				colorMap.put(key, Integer.toString(color.getRGB()));
+			}
+		}
+
+		return colorMap;
 	}
 
 	private void copySavedStartingPointToCustom(
@@ -2449,7 +2491,8 @@ public class PlayerExamineOverlay extends Overlay
 	{
 		return startingPoint == PlayerExamineConfig.CustomColorStartingPoint.Custom1
 			|| startingPoint == PlayerExamineConfig.CustomColorStartingPoint.Custom2
-			|| startingPoint == PlayerExamineConfig.CustomColorStartingPoint.Custom3;
+			|| startingPoint == PlayerExamineConfig.CustomColorStartingPoint.Custom3
+			|| startingPoint == PlayerExamineConfig.CustomColorStartingPoint.SidePanelTheme;
 	}
 
 	private static ThemeColors defaultThemeColors(PlayerExamineConfig.CustomColorStartingPoint startingPoint)

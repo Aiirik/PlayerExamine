@@ -27,7 +27,9 @@ Player Examine turns player examines into a compact, configurable overlay for ch
 - Supports hiding slots marked `Not visible from examine`
 - Includes configurable overlay width, transparency, editable light and themed color preset bases including Saradomin, and text colors
 - Includes separate color groups for overlay, list-style rows, item hover tooltips, and stats hover tooltips
+- Includes an optional Color Sharing side panel for saved named themes, with a `Panel theme` custom theme entry, active-theme indicator, and clipboard export
 - Includes optional opening glow, default tab choices including `Remember last`, and custom Attack icon choices for the visual stats tab
+- Supports configurable Player Examine notification text color
 - Supports optional GE value threshold glow on equipment slot borders
 - Keeps the overlay open through short loading transitions such as tunnels and area changes
 - Includes login update notifications

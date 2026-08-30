@@ -3,11 +3,23 @@ package com.aiirik.playerexamine;
 import com.aiirik.playerexamine.model.PlayerExamineData;
 import com.aiirik.playerexamine.model.PlayerHiscoreData;
 import com.aiirik.playerexamine.overlay.PlayerExamineOverlay;
+import com.aiirik.playerexamine.ui.PlayerExamineThemePanel;
+import com.google.gson.Gson;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import com.google.inject.Provides;
+import java.awt.Color;
+import java.awt.Graphics2D;
+import java.awt.RenderingHints;
+import java.awt.Toolkit;
+import java.awt.datatransfer.StringSelection;
 import java.awt.event.MouseEvent;
+import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -22,6 +34,7 @@ import okhttp3.HttpUrl;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
+import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
 import net.runelite.api.Point;
@@ -30,6 +43,7 @@ import net.runelite.api.MenuAction;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.MenuOptionClicked;
 import net.runelite.client.chat.ChatMessageManager;
+import net.runelite.client.chat.QueuedMessage;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.events.ConfigChanged;
@@ -41,7 +55,10 @@ import net.runelite.client.input.MouseManager;
 import net.runelite.client.menus.MenuManager;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
+import net.runelite.client.ui.ClientToolbar;
+import net.runelite.client.ui.NavigationButton;
 import net.runelite.client.ui.overlay.OverlayManager;
+import net.runelite.client.util.ColorUtil;
 import net.runelite.client.util.LinkBrowser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -53,6 +70,8 @@ public class PlayerExaminePlugin extends Plugin
 {
 	private static final Logger log = LoggerFactory.getLogger(PlayerExaminePlugin.class);
 	private static final String EXAMINE_OPTION = "Examine";
+	private static final String CUSTOM_THEMES_KEY = "customColorThemes";
+	private static final String ACTIVE_SIDE_PANEL_THEME_KEY = "activeSidePanelTheme";
 	private static final Duration HISCORE_CACHE_TTL = Duration.ofMinutes(10);
 	private static final String[] HISCORE_BASES = {
 		"https://secure.runescape.com/m=hiscore_oldschool/index_lite.ws",
@@ -66,6 +85,9 @@ public class PlayerExaminePlugin extends Plugin
 
 	@Inject
 	private OverlayManager overlayManager;
+
+	@Inject
+	private ClientToolbar clientToolbar;
 
 	@Inject
 	private ConfigManager configManager;
@@ -94,10 +116,16 @@ public class PlayerExaminePlugin extends Plugin
 	@Inject
 	private OkHttpClient okHttpClient;
 
+	@Inject
+	private Gson gson;
+
 	private volatile PlayerExamineData currentData;
 	private volatile PlayerHiscoreData currentHiscoreData;
 	private volatile HiscoreLookupState hiscoreLookupState = HiscoreLookupState.IDLE;
 	private volatile String currentHiscoreName;
+	private boolean applyingNamedTheme;
+	private PlayerExamineThemePanel themePanel;
+	private NavigationButton navigationButton;
 	private final AtomicLong hiscoreLookupRequestId = new AtomicLong();
 	private final Map<String, CachedHiscoreData> hiscoreCache = new ConcurrentHashMap<>();
 	private final MouseAdapter mouseAdapter = new MouseAdapter()
@@ -127,6 +155,7 @@ public class PlayerExaminePlugin extends Plugin
 		overlayManager.add(overlay);
 		menuManager.get().addPlayerMenuItem(EXAMINE_OPTION);
 		mouseManager.registerMouseListener(mouseAdapter);
+		updateThemePanelNavigation();
 		overlay.setSelectedTab(PlayerExamineOverlay.OverlayTab.EQUIPMENT);
 		log.debug("Player Examine started");
 	}
@@ -134,6 +163,12 @@ public class PlayerExaminePlugin extends Plugin
 	@Override
 	protected void shutDown()
 	{
+		if (navigationButton != null)
+		{
+			clientToolbar.removeNavigation(navigationButton);
+			navigationButton = null;
+			themePanel = null;
+		}
 		mouseManager.unregisterMouseListener(mouseAdapter);
 		overlayManager.remove(overlay);
 		menuManager.get().removePlayerMenuItem(EXAMINE_OPTION);
@@ -149,6 +184,7 @@ public class PlayerExaminePlugin extends Plugin
 			PlayerExamineUpdateNotice.announceIfNeeded(
 				configManager,
 				chatMessageManager,
+				config,
 				config.disableUpdateNotifications());
 		}
 		else if (shouldClearCurrentData(event.getGameState()))
@@ -165,8 +201,36 @@ public class PlayerExaminePlugin extends Plugin
 			return;
 		}
 
+		if ("enableColorSharingPanel".equals(event.getKey()))
+		{
+			updateThemePanelNavigation();
+			return;
+		}
+
+		if ("themePreset".equals(event.getKey()))
+		{
+			if (!applyingNamedTheme && !"Custom".equals(event.getNewValue()))
+			{
+				clearActiveSidePanelTheme();
+			}
+
+			overlay.saveCustomPresetColor(configManager, event.getKey());
+			return;
+		}
+
 		if (!"customColorStartingPoint".equals(event.getKey()))
 		{
+			if (applyingNamedTheme)
+			{
+				return;
+			}
+
+			if (!applyingNamedTheme
+				&& isThemeColorConfigKey(event.getKey())
+				&& config.customColorStartingPoint() == PlayerExamineConfig.CustomColorStartingPoint.SidePanelTheme)
+			{
+				clearActiveSidePanelTheme();
+			}
 			overlay.saveCustomPresetColor(configManager, event.getKey());
 			return;
 		}
@@ -187,7 +251,252 @@ public class PlayerExaminePlugin extends Plugin
 		}
 
 		overlay.copyThemeColorsToCustom(configManager, startingPoint);
+		if (startingPoint != PlayerExamineConfig.CustomColorStartingPoint.SidePanelTheme)
+		{
+			clearActiveSidePanelTheme();
+		}
 		eventBus.post(new ProfileChanged());
+	}
+
+	private void updateThemePanelNavigation()
+	{
+		if (!config.enableColorSharingPanel())
+		{
+			if (navigationButton != null)
+			{
+				clientToolbar.removeNavigation(navigationButton);
+				navigationButton = null;
+				themePanel = null;
+			}
+			return;
+		}
+
+		if (navigationButton != null)
+		{
+			return;
+		}
+
+		themePanel = new PlayerExamineThemePanel(this);
+		navigationButton = NavigationButton.builder()
+			.tooltip("Player Examine")
+			.icon(createNavigationIcon())
+			.panel(themePanel)
+			.priority(6)
+			.build();
+		clientToolbar.addNavigation(navigationButton);
+	}
+
+	public Map<String, String> getNamedColorThemes()
+	{
+		Map<String, String> themes = new LinkedHashMap<>();
+		String json = configManager.getConfiguration(PlayerExamineConfig.CONFIG_GROUP, CUSTOM_THEMES_KEY);
+		if (json == null || json.isEmpty())
+		{
+			return themes;
+		}
+
+		try
+		{
+			JsonObject root = new JsonParser().parse(json).getAsJsonObject();
+			for (String name : root.keySet())
+			{
+				JsonElement value = root.get(name);
+				if (value != null && !value.isJsonNull())
+				{
+					themes.put(name, value.getAsString());
+				}
+			}
+		}
+		catch (RuntimeException ex)
+		{
+			log.debug("Unable to read Player Examine custom themes", ex);
+		}
+
+		return themes;
+	}
+
+	public String getActiveSidePanelTheme()
+	{
+		if (config.themePreset() != PlayerExamineConfig.ThemePreset.Custom
+			|| config.customColorStartingPoint() != PlayerExamineConfig.CustomColorStartingPoint.SidePanelTheme)
+		{
+			return null;
+		}
+
+		return configManager.getConfiguration(PlayerExamineConfig.CONFIG_GROUP, ACTIVE_SIDE_PANEL_THEME_KEY);
+	}
+
+	public String createThemeFromCurrentColors(String name)
+	{
+		String normalizedName = normalizeThemeName(name);
+		String themeJson = overlay.exportCurrentColorTheme(normalizedName, gson);
+		saveNamedColorTheme(normalizedName, themeJson);
+		queueColorSharingMessage("Saved Player Examine theme: " + normalizedName);
+		return themeJson;
+	}
+
+	public String importNamedColorTheme(String name, String json)
+	{
+		String normalizedName = normalizeThemeName(name);
+		Map<String, String> colors = PlayerExamineColorSettings.importFromJson(json);
+		String themeJson = PlayerExamineColorSettings.exportToJson(normalizedName, colors, gson);
+		saveNamedColorTheme(normalizedName, themeJson);
+		queueColorSharingMessage("Imported Player Examine theme: " + normalizedName);
+		return themeJson;
+	}
+
+	public void updateNamedColorThemeFromCurrent(String name)
+	{
+		String normalizedName = normalizeThemeName(name);
+		saveNamedColorTheme(normalizedName, overlay.exportCurrentColorTheme(normalizedName, gson));
+		queueColorSharingMessage("Updated Player Examine theme: " + normalizedName);
+	}
+
+	public int applyNamedColorTheme(String name)
+	{
+		String themeJson = getNamedColorThemes().get(name);
+		if (themeJson == null)
+		{
+			throw new IllegalArgumentException("Unknown Player Examine theme: " + name);
+		}
+
+		int imported;
+		applyingNamedTheme = true;
+		try
+		{
+			imported = overlay.applyColorTheme(configManager, themeJson);
+			configManager.setConfiguration(PlayerExamineConfig.CONFIG_GROUP, ACTIVE_SIDE_PANEL_THEME_KEY, name);
+			eventBus.post(new ProfileChanged());
+		}
+		finally
+		{
+			applyingNamedTheme = false;
+		}
+		if (themePanel != null)
+		{
+			themePanel.rebuild();
+		}
+		queueColorSharingMessage("Applied Player Examine theme: " + name);
+		return imported;
+	}
+
+	public String exportNamedColorTheme(String name)
+	{
+		String themeJson = getNamedColorThemes().get(name);
+		if (themeJson == null)
+		{
+			throw new IllegalArgumentException("Unknown Player Examine theme: " + name);
+		}
+
+		return themeJson;
+	}
+
+	public void copyNamedColorThemeToClipboard(String name)
+	{
+		String themeJson = exportNamedColorTheme(name);
+		Toolkit.getDefaultToolkit()
+			.getSystemClipboard()
+			.setContents(new StringSelection(themeJson), null);
+		queueColorSharingMessage("Copied Player Examine theme: " + name);
+	}
+
+	public void deleteNamedColorTheme(String name)
+	{
+		Map<String, String> themes = getNamedColorThemes();
+		if (themes.remove(name) != null)
+		{
+			saveNamedColorThemes(themes);
+			if (name.equals(getActiveSidePanelTheme()))
+			{
+				clearActiveSidePanelTheme();
+			}
+			queueColorSharingMessage("Deleted Player Examine theme: " + name);
+		}
+	}
+
+	private void clearActiveSidePanelTheme()
+	{
+		configManager.unsetConfiguration(PlayerExamineConfig.CONFIG_GROUP, ACTIVE_SIDE_PANEL_THEME_KEY);
+		if (themePanel != null)
+		{
+			themePanel.rebuild();
+		}
+	}
+
+	private void saveNamedColorTheme(String name, String themeJson)
+	{
+		Map<String, String> themes = getNamedColorThemes();
+		themes.put(name, themeJson);
+		saveNamedColorThemes(themes);
+		if (themePanel != null)
+		{
+			themePanel.rebuild();
+		}
+	}
+
+	private void saveNamedColorThemes(Map<String, String> themes)
+	{
+		JsonObject root = new JsonObject();
+		for (Map.Entry<String, String> entry : themes.entrySet())
+		{
+			root.addProperty(entry.getKey(), entry.getValue());
+		}
+
+		configManager.setConfiguration(PlayerExamineConfig.CONFIG_GROUP, CUSTOM_THEMES_KEY, gson.toJson(root));
+	}
+
+	private static String normalizeThemeName(String name)
+	{
+		String normalizedName = name == null ? "" : name.trim();
+		if (normalizedName.isEmpty())
+		{
+			throw new IllegalArgumentException("Theme name is required.");
+		}
+		if (normalizedName.length() > 40)
+		{
+			throw new IllegalArgumentException("Theme name must be 40 characters or less.");
+		}
+
+		return normalizedName;
+	}
+
+	private static boolean isThemeColorConfigKey(String key)
+	{
+		return PlayerExamineColorSettings.isThemeColorKey(key);
+	}
+
+	private void queueColorSharingMessage(String message)
+	{
+		chatMessageManager.queue(QueuedMessage.builder()
+			.type(ChatMessageType.CONSOLE)
+			.runeLiteFormattedMessage(ColorUtil.wrapWithColorTag(message, config.notificationTextColor()))
+			.build());
+	}
+
+	private static BufferedImage createNavigationIcon()
+	{
+		BufferedImage image = new BufferedImage(16, 16, BufferedImage.TYPE_INT_ARGB);
+		Graphics2D graphics = image.createGraphics();
+		graphics.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+		graphics.setColor(new Color(31, 24, 17, 245));
+		graphics.fillRoundRect(1, 1, 14, 14, 4, 4);
+		graphics.setColor(new Color(118, 94, 60, 255));
+		graphics.drawRoundRect(1, 1, 13, 13, 4, 4);
+
+		graphics.setColor(new Color(235, 226, 193));
+		graphics.fillOval(5, 3, 5, 5);
+		graphics.setColor(new Color(215, 125, 40));
+		graphics.fillRoundRect(4, 8, 7, 5, 2, 2);
+
+		graphics.setColor(new Color(245, 240, 228));
+		graphics.drawOval(2, 2, 7, 7);
+		graphics.drawLine(8, 8, 12, 12);
+		graphics.setColor(new Color(31, 24, 17));
+		graphics.drawOval(4, 4, 3, 3);
+
+		graphics.dispose();
+		return image;
 	}
 
 	private static boolean shouldClearCurrentData(GameState gameState)

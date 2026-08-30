@@ -5,6 +5,8 @@
 ### Features
 
 - Adds a `Both` value format for overlay footer totals and item hover tooltip values, showing long and compact values together, such as `1,200,000 (1.2m)`.
+- Adds an optional Color Sharing side panel for creating named color themes, applying saved themes through a `Panel theme` custom theme entry, importing pasted theme text, and exporting themes to the clipboard.
+- Adds a configurable notification text color for update and theme-sharing messages.
 
 ### Fixes
 

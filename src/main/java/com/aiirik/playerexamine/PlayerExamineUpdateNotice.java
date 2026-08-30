@@ -1,6 +1,5 @@
 package com.aiirik.playerexamine;
 
-import java.awt.Color;
 import net.runelite.api.ChatMessageType;
 import net.runelite.client.chat.ChatMessageManager;
 import net.runelite.client.chat.QueuedMessage;
@@ -12,7 +11,6 @@ final class PlayerExamineUpdateNotice
 	static final String NOTICE_ID = PlayerExamineChangelog.VERSION;
 	static final String MESSAGE = PlayerExamineChangelog.getMessage();
 
-	private static final Color NOTICE_COLOR = new Color(160, 45, 45);
 	private static final String CONFIG_GROUP = "player-examine";
 	private static final String LAST_NOTICE_ID_KEY = "lastUpdateNoticeId";
 
@@ -23,6 +21,7 @@ final class PlayerExamineUpdateNotice
 	static void announceIfNeeded(
 		ConfigManager configManager,
 		ChatMessageManager chatMessageManager,
+		PlayerExamineConfig config,
 		boolean disableUpdateNotifications)
 	{
 		String lastNoticeId = configManager.getConfiguration(CONFIG_GROUP, LAST_NOTICE_ID_KEY);
@@ -35,7 +34,7 @@ final class PlayerExamineUpdateNotice
 		{
 			chatMessageManager.queue(QueuedMessage.builder()
 				.type(ChatMessageType.CONSOLE)
-				.runeLiteFormattedMessage(ColorUtil.wrapWithColorTag(MESSAGE, NOTICE_COLOR))
+				.runeLiteFormattedMessage(ColorUtil.wrapWithColorTag(MESSAGE, config.notificationTextColor()))
 				.build());
 		}
 

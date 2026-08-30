@@ -19,6 +19,7 @@ public interface PlayerExamineConfig extends Config
 	String STATS_HOVER_TOOLTIP_SECTION = "statsHoverTooltip";
 	String LIST_STYLE_COLORS_SECTION = "listStyleColors";
 	String TOOLTIP_COLORS_SECTION = "tooltipColors";
+	String COLOR_SHARING_SECTION = "colorSharing";
 	String MISC_SECTION = "misc";
 
 	enum TotalValueMode
@@ -104,6 +105,14 @@ public interface PlayerExamineConfig extends Config
 			public String toString()
 			{
 				return "Custom 3";
+			}
+		},
+		SidePanelTheme
+		{
+			@Override
+			public String toString()
+			{
+				return "Panel theme";
 			}
 		}
 	}
@@ -262,9 +271,17 @@ public interface PlayerExamineConfig extends Config
 	String tooltipColorsSection = TOOLTIP_COLORS_SECTION;
 
 	@ConfigSection(
+		name = "Color Sharing",
+		description = "Named theme side panel settings",
+		position = 6,
+		closedByDefault = true
+	)
+	String colorSharingSection = COLOR_SHARING_SECTION;
+
+	@ConfigSection(
 		name = "Misc",
 		description = "Miscellaneous display settings",
-		position = 6,
+		position = 7,
 		closedByDefault = true
 	)
 	String miscSection = MISC_SECTION;
@@ -279,6 +296,30 @@ public interface PlayerExamineConfig extends Config
 	default boolean disableUpdateNotifications()
 	{
 		return false;
+	}
+
+	@ConfigItem(
+		keyName = "notificationTextColor",
+		name = "Notification text",
+		position = 4,
+		section = MISC_SECTION,
+		description = "Chatbox text color for Player Examine update, import, and export messages"
+	)
+	default Color notificationTextColor()
+	{
+		return new Color(160, 45, 45);
+	}
+
+	@ConfigItem(
+		keyName = "enableColorSharingPanel",
+		name = "Theme side panel",
+		position = 0,
+		section = COLOR_SHARING_SECTION,
+		description = "Show the Player Examine side panel for creating, importing, exporting, and applying named color themes"
+	)
+	default boolean enableColorSharingPanel()
+	{
+		return true;
 	}
 
 	@ConfigItem(
@@ -394,10 +435,10 @@ public interface PlayerExamineConfig extends Config
 
 	@ConfigItem(
 		keyName = "customColorStartingPoint",
-		name = "Custom color base",
+		name = "Custom theme",
 		position = 1,
 		section = OVERLAY_COLORS_SECTION,
-		description = "Select a preset theme's colors as a base as a starting point for a custom theme. You may briefly see a RuneLite update popup while the plugin refreshes to show the new colors."
+		description = "Select colors as a starting point for a custom theme. You may briefly see a RuneLite update popup while the plugin refreshes to show the new colors."
 	)
 	default CustomColorStartingPoint customColorStartingPoint()
 	{
