@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.1.2 - 29 Aug 2026
+## 1.2.0 - 29 Aug 2026
 
 ### Features
 
