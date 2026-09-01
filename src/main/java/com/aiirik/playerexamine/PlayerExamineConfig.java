@@ -320,7 +320,7 @@ public interface PlayerExamineConfig extends Config
 	)
 	default boolean enableColorSharingPanel()
 	{
-		return true;
+		return false;
 	}
 
 	@ConfigItem(
@@ -382,6 +382,19 @@ public interface PlayerExamineConfig extends Config
 	default int overlayWidth()
 	{
 		return 160;
+	}
+
+	@ConfigItem(
+		keyName = "overlayCornerRadius",
+		name = "Corner radius",
+		position = 5,
+		section = OVERLAY_SECTION,
+		description = "Round the overlay frame corners in pixels"
+	)
+	@Range(min = 0, max = 6)
+	default int overlayCornerRadius()
+	{
+		return 0;
 	}
 
 	@ConfigItem(

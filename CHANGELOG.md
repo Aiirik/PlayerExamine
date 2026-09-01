@@ -5,6 +5,7 @@
 ### Features
 
 - Adds a `RuneLite` theme preset that follows RuneLite's configured overlay color.
+- Adds an overlay corner radius setting.
 
 ## 1.2.0 - 29 Aug 2026
 

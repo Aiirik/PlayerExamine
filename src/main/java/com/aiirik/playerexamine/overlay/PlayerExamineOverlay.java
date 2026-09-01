@@ -15,7 +15,9 @@ import java.awt.FontMetrics;
 import java.awt.Graphics2D;
 import java.awt.Rectangle;
 import java.awt.RenderingHints;
+import java.awt.Shape;
 import java.awt.Stroke;
+import java.awt.geom.RoundRectangle2D;
 import java.awt.image.BufferedImage;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -261,11 +263,17 @@ public class PlayerExamineOverlay extends Overlay
 
 	private void drawFrame(Graphics2D graphics, PlayerExamineData data, Rectangle closeButton, int frameHeight, int frameWidth)
 	{
+		int cornerRadius = overlayCornerRadius();
+		Shape frameShape = createRoundedShape(0, 0, frameWidth - 1, frameHeight - 1, cornerRadius);
+		Shape innerFrameShape = createRoundedShape(1, 1, frameWidth - 2, frameHeight - 2, Math.max(0, cornerRadius - 1));
+		Graphics2D clippedGraphics = (Graphics2D) graphics.create();
+		clippedGraphics.setClip(frameShape);
+
 		Color backgroundColor = overlayBackgroundColor();
 		if (backgroundColor.getAlpha() > 0)
 		{
-			graphics.setColor(applyOverlayTransparency(backgroundColor));
-			graphics.fillRect(1, 1, frameWidth - 2, frameHeight - 2);
+			clippedGraphics.setColor(applyOverlayTransparency(backgroundColor));
+			clippedGraphics.fill(innerFrameShape);
 		}
 
 		FontMetrics metrics = graphics.getFontMetrics();
@@ -286,11 +294,13 @@ public class PlayerExamineOverlay extends Overlay
 			closeFill = applyOverlayTransparency(closeFill);
 		}
 		Rectangle closeInnerBounds = new Rectangle(closeButton.x + 1, closeButton.y + 1, closeButton.width - 2, closeButton.height - 2);
-		graphics.setColor(closeFill);
-		graphics.fillRect(closeInnerBounds.x, closeInnerBounds.y, closeInnerBounds.width, closeInnerBounds.height);
+		clippedGraphics.setColor(closeFill);
+		clippedGraphics.fillRect(closeInnerBounds.x, closeInnerBounds.y, closeInnerBounds.width, closeInnerBounds.height);
+		clippedGraphics.dispose();
+
 		graphics.setColor(applyOverlayTransparency(overlayBorderColor()));
 		graphics.setStroke(new BasicStroke(1f));
-		graphics.drawRect(0, 0, frameWidth - 1, frameHeight - 1);
+		graphics.draw(frameShape);
 		graphics.drawLine(1, TITLE_BAR_HEIGHT - 1, frameWidth - 2, TITLE_BAR_HEIGHT - 1);
 		graphics.drawLine(closeButton.x, closeButton.y + 1, closeButton.x, closeButton.y + closeButton.height - 2);
 		drawCloseButtonIcon(graphics, closeInnerBounds, xTextColor());
@@ -341,6 +351,7 @@ public class PlayerExamineOverlay extends Overlay
 		float remaining = 1.0f - ((float) elapsed / OPENING_FLAIR_DURATION_MS);
 		Color flair = openingFlairColor();
 		Stroke originalStroke = graphics.getStroke();
+		int cornerRadius = overlayCornerRadius();
 		for (int i = 4; i >= 0; i--)
 		{
 			float ringAlpha = remaining * (0.15f + (0.11f * (4 - i)));
@@ -352,9 +363,25 @@ public class PlayerExamineOverlay extends Overlay
 
 			graphics.setColor(applyOverlayTransparency(new Color(flair.getRed(), flair.getGreen(), flair.getBlue(), alpha)));
 			graphics.setStroke(new BasicStroke(i <= 1 ? 2f : 1f));
-			graphics.drawRect(i, i, frameWidth - 1 - (i * 2), frameHeight - 1 - (i * 2));
+			graphics.draw(createRoundedShape(i, i, frameWidth - 1 - (i * 2), frameHeight - 1 - (i * 2), Math.max(0, cornerRadius - i)));
 		}
 		graphics.setStroke(originalStroke);
+	}
+
+	private int overlayCornerRadius()
+	{
+		return Math.max(0, Math.min(5, config.overlayCornerRadius()));
+	}
+
+	private static Shape createRoundedShape(int x, int y, int width, int height, int radius)
+	{
+		if (radius <= 0)
+		{
+			return new Rectangle(x, y, width, height);
+		}
+
+		int arc = Math.min(radius * 2, Math.min(width, height));
+		return new RoundRectangle2D.Float(x, y, width, height, arc, arc);
 	}
 
 	private ContentLayout buildContentLayout(Graphics2D graphics, PlayerExamineData data, PlayerExamineConfig.OverlayMode overlayMode, int frameWidth, int contentTop)
