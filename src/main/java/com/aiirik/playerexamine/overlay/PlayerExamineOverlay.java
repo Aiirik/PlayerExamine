@@ -370,7 +370,7 @@ public class PlayerExamineOverlay extends Overlay
 
 	private int overlayCornerRadius()
 	{
-		return Math.max(0, Math.min(5, config.overlayCornerRadius()));
+		return Math.max(0, Math.min(6, config.overlayCornerRadius()));
 	}
 
 	private static Shape createRoundedShape(int x, int y, int width, int height, int radius)

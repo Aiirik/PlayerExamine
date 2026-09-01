@@ -394,7 +394,7 @@ public interface PlayerExamineConfig extends Config
 	@Range(min = 0, max = 6)
 	default int overlayCornerRadius()
 	{
-		return 0;
+		return 4;
 	}
 
 	@ConfigItem(
