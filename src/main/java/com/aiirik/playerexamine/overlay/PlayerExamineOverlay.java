@@ -37,6 +37,7 @@ import net.runelite.client.game.ItemManager;
 import net.runelite.client.game.ItemStats;
 import net.runelite.client.game.SkillIconManager;
 import net.runelite.client.config.ConfigManager;
+import net.runelite.client.config.RuneLiteConfig;
 import net.runelite.client.ui.FontManager;
 import net.runelite.client.ui.overlay.Overlay;
 import net.runelite.client.ui.overlay.OverlayLayer;
@@ -111,6 +112,7 @@ public class PlayerExamineOverlay extends Overlay
 	};
 	private final PlayerExaminePlugin plugin;
 	private final PlayerExamineConfig config;
+	private final RuneLiteConfig runeLiteConfig;
 	private final Client client;
 	private final ItemManager itemManager;
 	private final SkillIconManager skillIconManager;
@@ -129,6 +131,7 @@ public class PlayerExamineOverlay extends Overlay
 	public PlayerExamineOverlay(
 		PlayerExaminePlugin plugin,
 		PlayerExamineConfig config,
+		RuneLiteConfig runeLiteConfig,
 		Client client,
 		ItemManager itemManager,
 		SkillIconManager skillIconManager,
@@ -136,6 +139,7 @@ public class PlayerExamineOverlay extends Overlay
 	{
 		this.plugin = plugin;
 		this.config = config;
+		this.runeLiteConfig = runeLiteConfig;
 		this.client = client;
 		this.itemManager = itemManager;
 		this.skillIconManager = skillIconManager;
@@ -2113,7 +2117,7 @@ public class PlayerExamineOverlay extends Overlay
 		return themeColors(config.themePreset());
 	}
 
-	private static ThemeColors themeColors(PlayerExamineConfig.ThemePreset preset)
+	private ThemeColors themeColors(PlayerExamineConfig.ThemePreset preset)
 	{
 		if (preset == null || preset == PlayerExamineConfig.ThemePreset.Custom)
 		{
@@ -2122,6 +2126,24 @@ public class PlayerExamineOverlay extends Overlay
 
 		switch (preset)
 		{
+			case RuneLite:
+				return new ThemeColors(
+					runeLiteOverlayBackgroundColor(),
+					runeLiteOverlayBorderColor(),
+					Color.WHITE,
+					Color.WHITE,
+					Color.LIGHT_GRAY,
+					runeLiteOverlayBorderColor(),
+					runeLiteOverlayBackgroundColor(),
+					runeLiteOverlayBorderColor(),
+					runeLiteOverlayBackgroundColor(),
+					runeLiteOverlayBackgroundColor(),
+					runeLiteOverlayBorderColor(),
+					runeLiteOverlayBorderColor(),
+					Color.WHITE,
+					Color.LIGHT_GRAY,
+					Color.LIGHT_GRAY,
+					Color.WHITE);
 			case Classic:
 				return new ThemeColors(
 					new Color(31, 24, 17, 230),
@@ -2287,6 +2309,21 @@ public class PlayerExamineOverlay extends Overlay
 			default:
 				return null;
 		}
+	}
+
+	private Color runeLiteOverlayBackgroundColor()
+	{
+		return runeLiteConfig.overlayBackgroundColor();
+	}
+
+	private Color runeLiteOverlayBorderColor()
+	{
+		Color backgroundColor = runeLiteOverlayBackgroundColor();
+		return new Color(
+			(int) (backgroundColor.getRed() * 0.8f),
+			(int) (backgroundColor.getGreen() * 0.8f),
+			(int) (backgroundColor.getBlue() * 0.8f),
+			Math.min(255, (int) (backgroundColor.getAlpha() * 1.4f)));
 	}
 
 	public void copyThemeColorsToCustom(ConfigManager configManager, PlayerExamineConfig.CustomColorStartingPoint startingPoint)
@@ -2495,7 +2532,7 @@ public class PlayerExamineOverlay extends Overlay
 			|| startingPoint == PlayerExamineConfig.CustomColorStartingPoint.SidePanelTheme;
 	}
 
-	private static ThemeColors defaultThemeColors(PlayerExamineConfig.CustomColorStartingPoint startingPoint)
+	private ThemeColors defaultThemeColors(PlayerExamineConfig.CustomColorStartingPoint startingPoint)
 	{
 		if (startingPoint == null)
 		{

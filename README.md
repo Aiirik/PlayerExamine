@@ -26,6 +26,7 @@ Player Examine turns player examines into a compact, configurable overlay for ch
 - Supports total value display in the overlay footer, with long, compact, or combined value formatting
 - Supports hiding slots marked `Not visible from examine`
 - Includes configurable overlay width, transparency, editable light and themed color preset bases including Saradomin, and text colors
+- Includes a `RuneLite` theme preset that follows RuneLite's configured overlay color
 - Includes separate color groups for overlay, list-style rows, item hover tooltips, and stats hover tooltips
 - Includes an optional Color Sharing side panel for saved named themes, with a `Panel theme` custom theme entry, active-theme indicator, and clipboard export
 - Includes optional opening glow, default tab choices including `Remember last`, and custom Attack icon choices for the visual stats tab

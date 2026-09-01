@@ -40,6 +40,7 @@ public interface PlayerExamineConfig extends Config
 	enum ThemePreset
 	{
 		Custom,
+		RuneLite,
 		Classic,
 		LightClassic
 		{

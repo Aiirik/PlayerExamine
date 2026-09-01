@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.3.0 - 1 Sep 2026
+
+### Features
+
+- Adds a `RuneLite` theme preset that follows RuneLite's configured overlay color.
+
 ## 1.2.0 - 29 Aug 2026
 
 ### Features

@@ -5,11 +5,10 @@ import java.util.List;
 
 final class PlayerExamineChangelog
 {
-	static final String VERSION = "1.2.0";
+	static final String VERSION = "1.3.0";
 
 	private static final List<String> CHANGES = Arrays.asList(
-			"Custom theme base edits now stay saved when switching between bases",
-			"Resetting a custom theme color now restores the selected base theme's default");
+			"Added a RuneLite theme preset that follows RuneLite's configured overlay color");
 
 	private PlayerExamineChangelog()
 	{
