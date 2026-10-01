@@ -901,7 +901,7 @@ public class PlayerExamineOverlay extends Overlay
 			return null;
 		}
 
-		int geValue = itemManager.getItemPriceWithSource(entry.getItemId(), false);
+		long geValue = itemManager.getItemPriceWithSource(entry.getItemId(), false);
 		return geValue >= threshold.getValue() ? valueHighlightColor() : null;
 	}
 

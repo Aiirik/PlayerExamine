@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.4.0 - 1 Oct 2026
+
+### Fixes
+
+- Fixes the plugin failing to build after RuneLite changed item prices to `long` for items worth more than 2,147,483,647 gp.
+
 ## 1.3.0 - 1 Sep 2026
 
 ### Features
